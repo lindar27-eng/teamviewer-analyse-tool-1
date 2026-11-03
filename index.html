@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analyse-Tool TeamViewer – Steckbrief und Reifegrad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#E9EDF3; --ink:#14233A; --ink-2:#4A5A72; --line:#D3DAE5;
+  --ist:#1D63D8; --ist-soft:rgba(29,99,216,.16); --soll:#B86A00; --soll-soft:rgba(184,106,0,.10); --branche:#2E8B6E;
+  --warn:#9A3B00; --warn-bg:#FFF1E2; --focus:#1D63D8;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1724; --surface:#172234; --surface-2:#1F2C42; --ink:#E7ECF4; --ink-2:#A6B3C7; --line:#2C3B55;
+    --ist:#6EA4FF; --ist-soft:rgba(110,164,255,.20); --soll:#F0A640; --soll-soft:rgba(240,166,64,.12); --branche:#5CC8A3;
+    --warn:#FFB77A; --warn-bg:#3A2614; --focus:#6EA4FF; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1724; --surface:#172234; --surface-2:#1F2C42; --ink:#E7ECF4; --ink-2:#A6B3C7; --line:#2C3B55;
+  --ist:#6EA4FF; --ist-soft:rgba(110,164,255,.20); --soll:#F0A640; --soll-soft:rgba(240,166,64,.12); --branche:#5CC8A3;
+  --warn:#FFB77A; --warn-bg:#3A2614; --focus:#6EA4FF; color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px)}
+body{margin:0;overflow-x:clip;background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:17px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+h1,h2,h3,h4{font-family:"Archivo","Arial Narrow",Arial,sans-serif;line-height:1.15;margin:0}
+a{color:var(--ist)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+button,select,input,textarea{font:inherit;color:inherit}
+
+/* Kopf */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ink);color:#fff}
+:root[data-theme="dark"] .topbar{background:#0A101B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .topbar{background:#0A101B}}
+.topbar-inner{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:16px;letter-spacing:.01em;white-space:nowrap}
+.brand span{opacity:.65;font-weight:500}
+.steps{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
+.steps a,.steps span{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:6px;text-decoration:none;color:#fff;font-size:15px;white-space:nowrap}
+.steps b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);font-size:12px;font-family:Archivo,Arial,sans-serif}
+.steps a[aria-current="page"]{background:rgba(255,255,255,.14)}
+.steps a[aria-current="page"] b{background:#fff;color:#14233A;border-color:#fff}
+.steps a:hover{background:rgba(255,255,255,.08)}
+.steps span{opacity:.38;cursor:default}
+.theme-btn{background:none;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:14px}
+
+main{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+.view[hidden]{display:none}
+.page-head{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-bottom:22px}
+.page-head h1{font-size:clamp(30px,4.4vw,48px);font-weight:800;letter-spacing:-.01em}
+.page-head p{margin:8px 0 0;color:var(--ink-2);max-width:68ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:15px}
+.btn.primary{background:var(--ist);border-color:var(--ist);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0F1724}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0F1724}}
+.note{font-size:14px;color:var(--ink-2)}
+
+/* Steckbrief */
+.lede{background:var(--surface);border-left:6px solid var(--ist);padding:18px 22px;margin-bottom:18px}
+.lede .sentence{font-family:Archivo,Arial,sans-serif;font-size:clamp(19px,2.2vw,24px);font-weight:600;line-height:1.3;max-width:62ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:16px}
+.fact{background:var(--surface);padding:10px 12px}
+.fact .v{font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:20px}
+.fact .l{font-size:14px;color:var(--ink-2);line-height:1.3}
+.dims{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.dim{background:var(--surface);border:1px solid var(--line);padding:16px 18px 12px;grid-column:span 2}
+.dim.wide{grid-column:span 3}
+.dim h2{font-size:21px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dim h2 small{font-family:"Source Sans 3",sans-serif;font-weight:400;font-size:14px;color:var(--ink-2)}
+.el{padding:10px 0;border-top:1px solid var(--line)}
+.el:first-of-type{margin-top:10px}
+.el h3{font-size:15px;font-weight:600;color:var(--ink-2);font-family:"Source Sans 3",sans-serif;margin-bottom:2px}
+.el p{margin:0}
+.src{display:inline-block;font-size:13px;line-height:1.2;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);text-decoration:none;margin-left:4px;vertical-align:1px;white-space:nowrap}
+.src.assume{background:var(--warn-bg);color:var(--warn)}
+.el textarea,.el input,.edit-field{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 8px;resize:vertical}
+.el label{display:block;font-size:13px;color:var(--ink-2);margin-top:4px}
+.checkin{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.checkin .box{background:var(--surface);border:1px solid var(--line);padding:14px 18px}
+.checkin h3{font-size:17px;margin-bottom:4px}
+
+/* Reifegrad */
+.overview{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:18px;margin-bottom:26px}
+.panel{background:var(--surface);border:1px solid var(--line);padding:18px 20px;min-width:0}
+.overview>*,.elem-body>*,.two>*,.dims>*,.crit>*{min-width:0}
+.table-wrap{overflow-x:auto}
+.panel h2{font-size:22px;font-weight:700;margin-bottom:10px}
+.panel h3{font-size:17px;font-weight:700;margin:16px 0 6px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-2);margin-top:6px}
+.legend i{display:inline-block;width:22px;height:0;border-top:3px solid var(--ist);vertical-align:middle;margin-right:6px}
+.legend i.soll{border-top:3px dashed var(--soll)}
+.legend i.br{border-top:3px dotted var(--branche)}
+.means{width:100%;border-collapse:collapse;font-size:16px}
+.means th,.means td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right}
+.means th:first-child,.means td:first-child{text-align:left}
+.means thead th{font-size:14px;color:var(--ink-2);font-weight:600}
+.means input{width:64px;text-align:right;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:2px 6px}
+.stage-word{font-size:14px;color:var(--ink-2)}
+.gaps{list-style:none;padding:0;margin:0;counter-reset:g}
+.gaps li{counter-increment:g;display:grid;grid-template-columns:34px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.gaps li::before{content:counter(g);font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:26px;color:var(--soll);line-height:1}
+.gaps strong{display:block}
+.gaps span{font-size:14px;color:var(--ink-2)}
+
+.elem{margin-bottom:28px}
+.elem-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.elem-head h2{font-size:26px;font-weight:800}
+.elem-head .m{font-size:15px;color:var(--ink-2)}
+.elem-body{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+.elem-chart{background:var(--surface);border:1px solid var(--line);padding:10px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px)}
+.crit{background:var(--surface);border:1px solid var(--line);margin-bottom:8px;padding:12px 14px;display:grid;grid-template-columns:1fr 210px;gap:6px 18px}
+.crit h3{font-size:17px;font-weight:700;grid-column:1/-1;display:flex;gap:10px;align-items:baseline}
+.crit h3 .nr{color:var(--ink-2);font-weight:600;font-size:15px;min-width:22px}
+.crit h3 .phase{font-family:"Source Sans 3",sans-serif;font-weight:400;font-size:14px;color:var(--ink-2)}
+.scale{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:2px 0 4px}
+.scale div{font-size:13px;line-height:1.3;padding:6px 7px;background:var(--surface-2);color:var(--ink-2);border-top:3px solid transparent;position:relative}
+.scale div b{display:block;font-size:12px;color:var(--ink-2)}
+.scale div.is-ist{background:var(--ist-soft);color:var(--ink);border-top-color:var(--ist)}
+.scale div.is-soll{border-top:3px dashed var(--soll)}
+.scale div.is-ist.is-soll{border-top:3px solid var(--ist);box-shadow:inset 0 -3px 0 var(--soll)}
+.crit .why textarea,.crit .why input{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 8px;font-size:15px}
+.crit .why textarea{min-height:80px;resize:vertical}
+.crit .why label,.crit .ctrl label{font-size:13px;color:var(--ink-2);display:block;margin-top:4px}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;align-content:start}
+.ctrl select{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:5px 6px}
+.ctrl .full{grid-column:1/-1}
+.ctrl .chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-2);margin-top:6px}
+.badge-assume{font-family:"Source Sans 3",sans-serif;font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-bg);padding:1px 7px;border-radius:999px}
+
+.text-block textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:8px 10px;resize:vertical;font-size:16px}
+.lf{counter-reset:lf;list-style:none;padding:0;margin:0}
+.lf li{counter-increment:lf;padding:12px 0;border-top:1px solid var(--line)}
+.lf li>strong{display:block;margin-bottom:6px}
+.lf li>strong::before{content:counter(lf) ". ";color:var(--soll)}
+.lf textarea{width:100%;min-height:72px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:7px 9px;resize:vertical;font-size:15.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+.sources{margin-top:34px}
+.sources h2{font-size:22px;margin-bottom:8px}
+.sources ol{padding-left:0;list-style:none;margin:0;font-size:15px}
+.sources li{padding:6px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:44px 1fr;gap:8px}
+.sources li b{font-family:Archivo,Arial,sans-serif;color:var(--ink-2)}
+.sources li:target{background:var(--soll-soft)}
+.foot{margin-top:24px;font-size:14px;color:var(--ink-2)}
+
+svg.radar text{font-family:"Source Sans 3",Arial,sans-serif;fill:var(--ink-2);font-size:11.5px}
+svg.radar .grid{fill:none;stroke:var(--line)}
+svg.radar .axis{stroke:var(--line)}
+svg.radar .ist{fill:var(--ist-soft);stroke:var(--ist);stroke-width:2.2}
+svg.radar .soll{fill:none;stroke:var(--soll);stroke-width:2;stroke-dasharray:6 4}
+svg.radar .br{fill:none;stroke:var(--branche);stroke-width:2;stroke-dasharray:2 4}
+svg.radar circle.pt{fill:var(--ist)}
+svg.radar .ring-label{font-size:10px}
+
+@media (max-width:900px){
+  .dims{grid-template-columns:1fr}
+  .dim,.dim.wide{grid-column:auto}
+  .overview,.elem-body,.two,.checkin{grid-template-columns:1fr}
+  .elem-chart{position:static;max-width:420px}
+  .crit{grid-template-columns:1fr}
+  .scale{grid-template-columns:1fr 1fr}
+  .page-head{grid-template-columns:1fr}
+  .steps{order:3;flex-basis:100%}
+  .theme-btn{margin-left:auto}
+  .actions{justify-content:flex-start}
+}
+@media print{
+  .topbar,.actions{display:none}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">TeamViewer SE <span>Analyse-Tool</span></div>
+    <nav class="steps" aria-label="Bausteine">
+      <a href="#steckbrief" data-view="steckbrief"><b>1</b>Steckbrief</a>
+      <a href="#reifegrad" data-view="reifegrad"><b>2</b>Reifegrad</a>
+      <span title="Folgt in Termin 3"><b>3</b>Muster und Ideen</span>
+      <span title="Folgt in Termin 4"><b>4</b>Customer Journey</span>
+      <span title="Folgt in Termin 5"><b>5</b>Open Innovation</span>
+      <span title="Folgt in Termin 6"><b>6</b>Ökosystem</span>
+      <span title="Folgt in Termin 7"><b>7</b>Erlösmodell und KI</span>
+    </nav>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Hell- oder Dunkelmodus umschalten">Hell/Dunkel</button>
+  </div>
+</header>
+
+<main>
+  <!-- BAUSTEIN 1 -->
+  <section class="view" id="view-steckbrief" aria-labelledby="h-steckbrief">
+    <div class="page-head">
+      <div>
+        <h1 id="h-steckbrief">Steckbrief</h1>
+        <p>Das Geschäftsmodell von TeamViewer in den fünf Dimensionen nach Schallmo, je Element mit Quelle. Stand: 03.11.2026.</p>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="editBtn" type="button">Steckbrief bearbeiten</button>
+      </div>
+    </div>
+    <div id="steckbriefRoot"></div>
+  </section>
+
+  <!-- BAUSTEIN 2 -->
+  <section class="view" id="view-reifegrad" aria-labelledby="h-reifegrad" hidden>
+    <div class="page-head">
+      <div>
+        <h1 id="h-reifegrad">Digitaler Reifegrad</h1>
+        <p>Bewertung nach Appelfeller/Feldmann (Grad 1 bis 4) für Produkt, Kundenanbindung und Geschäftsmodell. Jede Stufe hat eine Begründung und einen Beleg; Annahmen sind markiert. Im Zweifel gilt die niedrigere Stufe.</p>
+      </div>
+    </div>
+
+    <div class="overview">
+      <div class="panel">
+        <h2>Ist und Soll im Überblick</h2>
+        <div id="radarOverview"></div>
+        <div class="legend"><span><i></i>Ist</span><span><i class="soll"></i>Soll</span><span id="brLegend" hidden><i class="br"></i>Branche</span></div>
+      </div>
+      <div class="panel">
+        <h2>Mittelwerte je Element</h2>
+        <div class="table-wrap"><table class="means" id="meansTable"></table></div>
+        <p class="note">Branchenwert optional: nur eintragen, wenn ein belegter Vergleichswert vorliegt. Leere Felder werden im Diagramm nicht gezeigt.</p>
+        <h3>Die drei größten Lücken</h3>
+        <ol class="gaps" id="gapList"></ol>
+        <p class="note">Ranking nach Lücke (Soll minus Ist) mal Relevanz für das Geschäftsmodell; bei Gleichstand zuerst das Kriterium mit niedrigerem Ist.</p>
+      </div>
+    </div>
+
+    <div id="elementsRoot"></div>
+
+    <div class="two">
+      <div class="panel text-block">
+        <h2>Branche und Wettbewerb</h2>
+        <textarea id="branchText" aria-label="Branche und Wettbewerb"></textarea>
+        <p class="note" id="branchSrc"></p>
+      </div>
+      <div class="panel text-block">
+        <h2>Abgleich mit unserer Wahrnehmung</h2>
+        <textarea id="perceptionText" aria-label="Abgleich mit unserer Wahrnehmung" placeholder="Stimmt das Ergebnis mit eurem Eindruck überein? Wo würdet ihr anders einstufen und warum?"></textarea>
+        <p class="note">Wird von der Gruppe ausgefüllt.</p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>Leitfragen nach Appelfeller/Feldmann</h2>
+      <ol class="lf" id="leitfragen"></ol>
+    </div>
+  </section>
+
+  <section class="sources" aria-labelledby="h-src">
+    <h2 id="h-src">Quellen</h2>
+    <ol id="sourceList"></ol>
+    <p class="foot">Einordnungen und Stufen sind eigene Bewertungen der Gruppe auf Basis öffentlicher Quellen, keine Aussagen von TeamViewer. Änderungen werden nur in diesem Browser gespeichert. <button class="btn" id="resetBtn" type="button">Auf Ausgangsstand zurücksetzen</button></p>
+  </section>
+</main>
+
+<script>
+(function(){
+"use strict";
+var KEY = "tmv-analyse-tool";
+var VERSION = 1;
+
+var SOURCES = {
+  Q1:{t:"TeamViewer SE: Ergebnisse Q4/GJ 2025, Quartalsmitteilung, 10.02.2026", u:"https://ir-api.eqs.com//media/document/e778698f-f18e-423f-b1a4-383efae07265/assets/260210_TMV_Q4-FY_2025_Quarterly_statement_DE.pdf"},
+  Q2:{t:"TeamViewer SE: EQS-News Q3 2026, 03.11.2026 (über boerse.de)", u:"https://www.boerse.de/nachrichten/EQS-News-TeamViewer-Q3-2026-Starke-Dynamik-im-Neugeschaeft-bei-TeamViewer-ONE-und-den-Enterprise-Grosskunden-Trendwende-im-DEX-Geschaeft-setzt-sich-fort-Umsatz-Jahresprognose-angesichts-gedaempfter-Aussichten-f/38700192"},
+  Q3:{t:"dpa-AFX: Teamviewer kappt Umsatzprognose, 03.11.2026 (über onvista)", u:"https://www.onvista.de/news/2026/11-03-roundup-teamviewer-kappt-umsatzprognose-aktie-rutscht-stark-ab-0-10-26571645"},
+  Q4:{t:"Reuters/Börsen-Zeitung: Teamviewer senkt Ausblick, 03.11.2026", u:"https://www.boersen-zeitung.de/unternehmen-branchen/teamviewer-senkt-ausblick"},
+  Q5:{t:"Admiral Markets: Auswertung der Q2-2026-Mitteilung von TeamViewer (Segmente, Regionen), 10/2026", u:"https://admiralmarkets.com/de/wissen/articles/shares/teamviewer-aktie-prognose-q3-2026"},
+  Q6:{t:"TeamViewer Pressebereich, Pressemitteilungen 2025–2026 (u. a. Tia 13.11.2025, Intune 24.02.2026, ServiceNow 22.07.2026, ONE 29.09.2026), abgerufen 03.11.2026", u:"https://www.teamviewer.com/de/unternehmen/presse/"},
+  Q7:{t:"Wikipedia: TeamViewer (company), abgerufen 03.11.2026", u:"https://en.wikipedia.org/wiki/TeamViewer_(company)"},
+  Q8:{t:"boerse.de: Fundamentalanalyse TeamViewer (Personal 2025), abgerufen 03.11.2026", u:"https://www.boerse.de/fundamental-analyse/TeamViewer-Aktie/DE000A2YN900"},
+  Q9:{t:"stock-world: TeamViewer Aktie – Prognose gesenkt, 03.11.2026", u:"https://www.stock-world.de/teamviewer-aktie-prognose-gesenkt/"},
+  Q10:{t:"IT Reseller: Teamviewer übernimmt IT-Service-Desk-Anbieter 1E, 10.12.2024 (Übersichtsseite)", u:"https://www.itreseller.ch/Artikel/103681/Teamviewer_waechst_vor_allem_mit_Grosskunden.html"},
+  Q11:{t:"Appelfeller, W./Feldmann, C. (2018): Die digitale Transformation des Unternehmens, Springer (Reifegradmodell, Kursfolien Termin 2)", u:""},
+  Q12:{t:"Schallmo, D. (2013): Geschäftsmodelle erfolgreich entwickeln und implementieren, Springer (Dimensionen, Kursfolien Termin 2)", u:""},
+  Q13:{t:"Eurostat: Digitalisation in Europe 2026 (Daten 2025); Bitkom: DESI-Index 2026, 03.08.2026 (Kursfolien Termin 1 und 2)", u:""}
+};
+
+var DEFAULT = {
+  v: VERSION,
+  steckbrief: {
+    satz: "TeamViewer verbindet Menschen mit Geräten aus der Ferne – vom Fernsupport für kleine Firmen bis zur KI-gestützten Verwaltung ganzer Arbeitsplatz- und Industrieumgebungen, verkauft im Abonnement.",
+    satzQ: "Q6",
+    facts: [
+      {v:"767,5 Mio. €", l:"Umsatz 2025 pro forma (+5 % währungsbereinigt)", q:"Q1"},
+      {v:"44,3 %", l:"Bereinigte EBITDA-Marge 2025", q:"Q1"},
+      {v:"736,9 Mio. €", l:"ARR Q3 2026 (wiederkehrender Jahresumsatz)", q:"Q2"},
+      {v:"> 645.000", l:"Zahlende Kunden (Stand 2025)", q:"Q6"},
+      {v:"1.925", l:"Mitarbeitende Ende 2025", q:"Q8"},
+      {v:"SDAX", l:"Sitz Göppingen, gegründet 2005", q:"Q3, Q7"}
+    ],
+    dims: [
+      {id:"kunden", titel:"Kunden", wer:"Wer sind die Kunden?", el:[
+        {n:"Kundensegmente", t:"Zwei Gruppen: kleine und mittlere Unternehmen (SMB, 527 Mio. € Umsatz 2025) und Großkunden (Enterprise, 240 Mio. €), dazu Behörden, v. a. in den USA. Größter Markt ist EMEA mit 402 Mio. € Umsatz 2025.", q:"Q1, Q4"},
+        {n:"Kundenkanäle", t:"Online-Shop und Inside Sales für SMB, Direktvertrieb für Enterprise, dazu Reseller und Managed Service Provider (eigenes Partnerprogramm seit 2025).", q:"Q6"},
+        {n:"Kundenbeziehungen", t:"Laufende Abonnements mit Verlängerung; Enterprise-NRR lag in Q3 2026 bei 93 %. Nach Preis- und Monetarisierungsmaßnahmen stieg die SMB-Abwanderung, die Maßnahmen wurden ausgesetzt.", q:"Q1, Q2"}
+      ]},
+      {id:"nutzen", titel:"Nutzen", wer:"Was wird angeboten?", el:[
+        {n:"Leistungen", t:"Fernzugriff und Fernsupport (Remote), Enterprise-Plattform Tensor, Arbeitsplatz-Plattform TeamViewer ONE, DEX (Digital Employee Experience, aus 1E), Assist AR für die Industrie, KI-Agent Tia.", q:"Q1, Q6"},
+        {n:"Nutzen", t:"IT-Probleme lösen, ohne vor Ort zu sein: weniger Reisen und Ausfallzeiten, schnellere Hilfe. Zunehmend erkennt und behebt die Software Probleme selbst, bevor Mitarbeitende sie bemerken.", q:"Q6, Q7"}
+      ]},
+      {id:"wert", titel:"Wertschöpfung", wer:"Wie wird die Leistung erbracht?", el:[
+        {n:"Ressourcen", t:"Software-Plattform und globale Verbindungsinfrastruktur, bekannte Marke, rund 1.925 Mitarbeitende, Nutzungsdaten aus Millionen Support-Sitzungen.", q:"Q6, Q8"},
+        {n:"Fähigkeiten", t:"Sichere Fernverbindungen, Endgeräte-Analyse (DEX), KI-Funktionen: 4,6 Mio. automatisierte Session Insights in Q3 2026 (+64 %).", q:"Q2"},
+        {n:"Prozesse", t:"Software-Entwicklung, digitaler Vertrieb und Verlängerung von Abos, Enterprise-Vertrieb mit langen Abschlusszyklen (CEO: Pipeline-Konversion zu langsam).", q:"Q9"}
+      ]},
+      {id:"partner", titel:"Partner", wer:"Mit wem?", wide:true, el:[
+        {n:"Partner", t:"Technologie: Microsoft (Intune, Ignite), ServiceNow (strategische Partnerschaft 2026), Salesforce Agentforce; Vertrieb: Reseller und Managed Service Provider; Referenzkunde Mercedes-AMG PETRONAS F1 Team.", q:"Q6"},
+        {n:"Partnerkanäle und -beziehungen", t:"Integrationen in die Plattformen der Partner (TeamViewer-Technik wird Teil der KI-Plattform von ServiceNow) und Partnerprogramme mit Schulung und Events, z. B. EMEA Partner Summit.", q:"Q6"}
+      ]},
+      {id:"finanzen", titel:"Finanzen", wer:"Wie wird Geld verdient?", wide:true, el:[
+        {n:"Umsätze", t:"Fast nur wiederkehrende Abo-Umsätze. Q3 2026: 184,5 Mio. € (−2,2 % währungsbereinigt); Prognose 2026: −1 bis −2 % währungsbereinigt bei rund 43 % Marge.", q:"Q2, Q3"},
+        {n:"Kosten", t:"Vor allem Personal, Entwicklung, Vertrieb und Marketing; dazu Zinsen auf die Nettoverschuldung von 819 Mio. € nach dem Kauf von 1E.", q:"Q9, Q10"}
+      ]}
+    ],
+    staerke: "Sehr hohe Profitabilität und wachsendes Großkundengeschäft: Neugeschäft mit TeamViewer ONE und DEX hat sich in Q3 2026 gegenüber dem Vorjahr versechsfacht.",
+    staerkeQ: "Q2",
+    frage: "Gelingt die Rückkehr zu Wachstum, wenn das SMB-Geschäft schrumpft, US-Großaufträge sich verzögern und die Kundenbindung laut CEO zu niedrig ist?",
+    frageQ: "Q3, Q9"
+  },
+  reifegrad: {
+    branche: {produkt:"", kunde:"", gm:""},
+    elements: [
+      {id:"produkt", titel:"Produkt", hint:"Software als Produkt: Kriterien sinngemäß auf Endgeräte und Software übertragen.", crit:[
+        {n:"Überwachung", s:["Keine Überwachungsfunktion","Ein Aspekt wird überwacht, z. B. Ausfälle","Mehrere Aspekte, z. B. Betriebsdaten zur Fehlerdiagnose","Umfassend: Zustand, Umgebung, Betriebs- und Nutzungsparameter"], ist:4, soll:4, rel:1,
+          b:"DEX und TeamViewer ONE erfassen laufend Zustand, Leistung und Nutzung der Endgeräte; Tia Reporting wertet die Daten aus.", q:"Q6", a:false},
+        {n:"Steuerung, Personalisierung", s:["Keine Steuerungssoftware","Steuerung einer Funktion","Steuerung mehrerer Funktionen, eingeschränkte Personalisierung","Steuerung der meisten Funktionen, umfangreiche Personalisierung"], ist:4, soll:4, rel:1,
+          b:"Kernfunktion ist die vollständige Fernsteuerung von Rechnern, Mobilgeräten und Anlagen; Rollen und Richtlinien über Tensor und Microsoft Intune.", q:"Q6", a:false},
+        {n:"Optimierung", s:["Keine Optimierungsalgorithmen","Einzelne Leistungsparameter optimiert","Mehrzahl der Parameter optimiert","Zusätzlich Prognose von Defekten, Wartung und Impulse für Entwicklung"], ist:3, soll:4, rel:2,
+          b:"Automatisierte Behebung wiederkehrender Probleme über das Resolution Center (09/2026). Eine systematische Prognose von Ausfällen ist öffentlich nicht belegt, daher Stufe 3.", q:"Q6", a:false},
+        {n:"Autonomie", s:["Keine eigenständige Änderung","Reagiert punktuell selbst","Reagiert auf Basis umfassender Auswertung","Hohe Autonomie, Selbstdiagnose und Selbstreparatur"], ist:3, soll:4, rel:3,
+          b:"KI-Agent Tia (seit 11/2025) analysiert und behebt IT-Probleme eigenständig, IT-Fachkräfte behalten aber die Kontrolle. Autonomes Endgeräte-Management ist erst im Aufbau.", q:"Q6", a:false},
+        {n:"Vernetzung", s:["Keine digitale Vernetzung","Eingeschränkte Schnittstellen","Umfangreiche Schnittstellen","Mit dem Internet vernetzt, eindeutig identifizierbar"], ist:4, soll:4, rel:1,
+          b:"Das Produkt ist eine Internetverbindung zwischen Geräten; auch Industrieanlagen ohne lokale Installation (Agentless Access).", q:"Q6", a:false}
+      ]},
+      {id:"kunde", titel:"Kundenanbindung", hint:"Zwölf Kriterien entlang der vier Phasen im Kaufprozess.", crit:[
+        {n:"Produktentwicklung mit Kunden", p:"Phase 1 Entwicklung", s:["Kunde als Ideengeber, z. B. Befragung","Digitale Spuren und Einbindung bei Ideen und Tests","Integrierte Auswertung von Nutzungs- und Befragungsdaten","Kunden als Co-Designer und Tester"], ist:2, soll:3, rel:2,
+          b:"Ideen und Feedback über die Community; eine systematische Auswertung von Nutzungsdaten für die Entwicklung ist öffentlich nicht belegt.", q:"Annahme: community.teamviewer.com prüfen", a:true},
+        {n:"Kunden werben Kunden", p:"Phase 2 Vorverkauf", s:["Keine Integration","Digitale Bewertung der Produkte","Bewertung und gezielte Weiterempfehlung","Bestandskunden beraten Neukunden digital"], ist:2, soll:3, rel:1,
+          b:"Kunden bewerten TeamViewer auf Bewertungs- und Analystenportalen; ein Empfehlungsprogramm ist nicht belegt.", q:"Annahme: Gartner Peer Insights und G2 prüfen", a:true},
+        {n:"Nachfrageprognose", p:"Phase 2 Vorverkauf", s:["Keine Integration","Analyse von Kundendaten","Analyse plus Prognosen der Kunden","Gemeinsame Prognose mit Kunden"], ist:2, soll:3, rel:1,
+          b:"Prognose über Pipeline- und Nutzungsdaten; gemeinsame Planung mit Kunden ist für Software unüblich und nicht belegt.", q:"Annahme", a:true},
+        {n:"Informationskanäle", p:"Phase 3 Kauf", s:["Wenige Kanäle, Medienbrüche","Multi Channel ohne Abstimmung","Teilweise integriert","Cross Channel, alle Kanäle integriert"], ist:3, soll:4, rel:2,
+          b:"Website, Webinare, Partner, Inside Sales und Messen (z. B. Hannover Messe 2026); eine vollständige Integration aller Kanäle ist nicht belegt.", q:"Q6 + Annahme", a:true},
+        {n:"Auftragseingang", p:"Phase 3 Kauf", s:["Wenige Kanäle, Medienbrüche","Multi Channel, begrenzt integriert","Cross Channel, umfangreich integriert","Direkter Zugriff auf Systeme des Kunden"], ist:3, soll:4, rel:2,
+          b:"Bestellung über Online-Shop, Inside Sales, Reseller und MSP-Partner; Enterprise-Verträge werden einzeln verhandelt.", q:"Q6", a:false},
+        {n:"Bezahlsysteme", p:"Phase 3 Kauf", s:["Bar, Rechnung, Lastschrift","EC- und Kreditkarte","Payment-Service-Provider","Mobile Payment, QR-Code"], ist:3, soll:3, rel:1,
+          b:"Online-Kauf mit Karte und Online-Zahlarten, Enterprise per Rechnung. Für B2B-Software ist Stufe 4 kaum relevant.", q:"Annahme: Zahlarten im Online-Shop prüfen", a:true},
+        {n:"Customer Self Service", p:"Phase 3 Kauf", s:["Kein Self Service","Online über Plattform","Online und stationär","Breit und tief, mobil, Chatbots"], ist:3, soll:4, rel:2,
+          b:"Hilfe-Center, Wissensdatenbank und Kundenkonto online; ein KI-Chatbot für Kundenfragen ist nicht belegt.", q:"Annahme: support.teamviewer.com prüfen", a:true},
+        {n:"Kunden beraten Kunden", p:"Phase 3 Kauf", s:["Klassische Erfahrungsberichte","Internetforen","Online-Plattformen","Eigene Peer-to-Peer-Plattform"], ist:4, soll:4, rel:1,
+          b:"Eigene Community-Plattform, auf der Nutzer sich gegenseitig helfen.", q:"Annahme: community.teamviewer.com prüfen", a:true},
+        {n:"After Sales", p:"Phase 4 Nach dem Kauf", s:["Keine Integration","Online-Services, Statusinfos","Nutzungsdaten für präventive Services","Ferndiagnose, Online-Wartung und Updates"], ist:4, soll:4, rel:1,
+          b:"Updates, Wartung und Diagnose laufen online; Ferndiagnose ist das Produkt selbst.", q:"Q6", a:false},
+        {n:"Customer Journey", p:"Phasenübergreifend", s:["Isolierte, nicht-digitale Touch Points","Isolierte digitale Touch Points","Teilintegriert, Teilreisen voll digital","Durchgängig digital, automatisierte Entscheidungen"], ist:3, soll:4, rel:3,
+          b:"SMB kauft und verlängert online; Enterprise-Abschlüsse dauern lange. Der CEO nennt die Pipeline-Konversion zu langsam und die Kundenbindung zu niedrig (11/2026).", q:"Q9", a:false},
+        {n:"Verhaltensanalyse", p:"Phasenübergreifend", s:["Keine Datenanalyse","Isoliert aus ERP/CRM","Integriert aus mehreren Quellen","Automatische Individualisierung, Echtzeit"], ist:3, soll:4, rel:3,
+          b:"Nutzungsdaten werden für Monetarisierung genutzt; der Anstieg der SMB-Abwanderung nach diesen Maßnahmen zeigt, dass die Ansprache noch nicht individuell genug ist.", q:"Q1", a:false},
+        {n:"IT-Integration beim Kunden", p:"Phasenübergreifend", s:["Keine Integration","Einseitiger Datenaustausch","Bidirektional und regelmäßig","Direkter Zugriff, Cloud, SaaS"], ist:4, soll:4, rel:1,
+          b:"SaaS mit direktem Zugriff auf Endgeräte; Integrationen in Microsoft Intune, ServiceNow und Salesforce Agentforce.", q:"Q6", a:false}
+      ]},
+      {id:"gm", titel:"Geschäftsmodell", hint:"Fünf Kriterien zur Rolle der Digitalisierung im Gesamtmodell.", crit:[
+        {n:"Geschäftsidee", s:["Keine Bedeutung","Keine zentrale Rolle","Digitalisierung erweitert bestehendes Modell","Geschäftsidee beruht auf Digitalisierung"], ist:4, soll:4, rel:1,
+          b:"Die Idee (Kunden helfen, ohne hinzufahren) ist nur digital möglich; Ursprung 2005.", q:"Q7", a:false},
+        {n:"Leistungserstellung", s:["Keine Bedeutung","Effizienz der Leistungserstellung","Erweitertes Leistungsspektrum, hybrid","Kern der Leistung ist digital, konstituierend"], ist:4, soll:4, rel:1,
+          b:"Leistung ist Software im Abo; keine physischen Assets außer IT.", q:"Q1", a:false},
+        {n:"Interaktion mit Kunden", s:["Analog","Analog und digital","Überwiegend digital","Fast nur digital"], ist:4, soll:4, rel:2,
+          b:"SMB fast nur digital; im Enterprise-Geschäft gibt es persönlichen Vertrieb. Grenzfall zu Stufe 3.", q:"Q6 + Annahme", a:true},
+        {n:"Produkte und Dienstleistungen", s:["Analog","Analog","Analog oder teildigital, Produkt-Service","Digitale Produkte und Dienstleistungen"], ist:4, soll:4, rel:1,
+          b:"Ausschließlich digitale Produkte: Remote, Tensor, ONE, DEX, Assist AR, KI-Funktionen.", q:"Q1, Q6", a:false},
+        {n:"Ziele der Digitalisierung", s:["Prozesse einfacher machen","Effizienz einzelner Prozesse","Zusatznutzen, Wettbewerbsfähigkeit","Skalierbares, langfristig wettbewerbsfähiges Modell"], ist:4, soll:4, rel:1,
+          b:"Ziel ist ein skalierbares Abo-Modell mit hoher Marge (bereinigt 44,3 % in 2025).", q:"Q1", a:false}
+      ]}
+    ],
+    branchText: "Branche: Software für IT-Support und digitalen Arbeitsplatz, also Teil des am stärksten digitalisierten Sektors. Zum Vergleich: EU-weit erreichen 72 % der Unternehmen ein grundlegendes Digitalisierungsniveau; Deutschland liegt im Bitkom-DESI 2026 auf Platz 17 von 27 (Q13).\n\nWettbewerb (eigene Einordnung): Peers wie N-able, Ivanti, Nexthink, ConnectWise oder AnyDesk sind ebenfalls rein digital, beim Digitalisierungsgrad gibt es also kaum Abstand. TeamViewer wird im Gartner Magic Quadrant 2026 für DEX zum dritten Mal als Leader geführt (Q6).\n\nAussage: Der Wettbewerb entscheidet sich nicht am Grad der Digitalisierung, sondern an KI-Autonomie, Einbindung in fremde Plattformen und Kundenbindung. Risiko: Microsoft (Intune, Windows-Bordmittel) sowie ServiceNow und Salesforce besitzen die Kundenschnittstelle, TeamViewer liefert dort die Verbindungstechnik zu.",
+    perception: "",
+    leitfragen: [
+      {f:"Welche Geschäftsprozesse haben durch weitere Digitalisierung das höchste Potenzial für Effizienz?", a:"Enterprise-Vertrieb (Pipeline-Konversion laut CEO zu langsam) und Verlängerung im SMB-Geschäft: Abwanderung früh aus Nutzungsdaten erkennen und automatisch gegensteuern. Im eigenen Support Tia einsetzen."},
+      {f:"Welche ergänzenden Dienstleistungen lassen sich auf Basis der Digitalisierung anbieten?", a:"DEX-Add-on für SMB, Patch- und Sicherheitsmanagement, Managed Services über MSP-Partner, KI-Auswertungen wie Session Insights als Zusatzpaket."},
+      {f:"Welche Produkte können als Dienstleistung verkauft werden?", a:"Bereits vollständig im Abo. Nächster Schritt wäre eine Abrechnung nach Ergebnis, z. B. je von Tia gelöstem Ticket."},
+      {f:"Welcher Zusatznutzen entsteht durch eine digitale Kundenschnittstelle mit Konfiguration?", a:"Selbst konfigurierbare Pakete (Geräteanzahl, Module, KI-Kontingent) im Online-Shop senken Hürden für SMB und vermeiden Verkaufsgespräche bei kleinen Upgrades."},
+      {f:"Ist kundenindividuelle Fertigung (Losgröße 1) wirtschaftlich und gewünscht?", a:"Bei Software fast ohne Mehrkosten über Module und Konfiguration möglich; gewünscht vor allem von Enterprise und Behörden (z. B. US-Zertifizierungen)."},
+      {f:"Droht die Gefahr, durch einen Plattformanbieter in der Wertschöpfung nach hinten gedrängt zu werden?", a:"Ja. Wenn KI-Agenten in ServiceNow, Salesforce oder Microsoft die Probleme lösen, wird TeamViewer zur unsichtbaren Verbindungsschicht. Gegenmittel: eigene Plattform ONE und eigener Agent Tia."},
+      {f:"Welche Daten können gesammelt werden, und lassen sie sich kommerzialisieren?", a:"Metadaten von Support-Sitzungen, Zustandsdaten der Endgeräte (DEX), KI-Dokumentationen. Kommerzialisierung als anonymisierte Benchmarks für Kunden denkbar, begrenzt durch DSGVO und Vertrauen der Kunden."}
+    ]
+  }
+};
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+var state;
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var p = JSON.parse(raw); if(p && p.v === VERSION) return p; }
+  }catch(e){}
+  return clone(DEFAULT);
+}
+var saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }, 250);
+}
+state = load();
+
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function srcChips(q){
+  if(!q) return '<span class="src assume">ohne Beleg</span>';
+  var parts = String(q).split(/,\s*|\s\+\s/);
+  var out = "";
+  var isAssume = /annahme/i.test(q);
+  parts.forEach(function(p){
+    p = p.trim();
+    if(SOURCES[p]) out += '<a class="src" href="#src-'+p+'" title="'+esc(SOURCES[p].t)+'">'+p+'</a>';
+  });
+  if(isAssume) out += '<span class="src assume">'+esc(String(q).replace(/^.*?(Annahme)/i,"Annahme"))+'</span>';
+  if(!out) out = '<span class="src">'+esc(q)+'</span>';
+  return out;
+}
+function fmt(n){return n.toFixed(1).replace(".",",");}
+
+/* ---------- Baustein 1 ---------- */
+var editMode = false;
+function renderSteckbrief(){
+  var s = state.steckbrief, h = "";
+  h += '<div class="lede">';
+  if(editMode){
+    h += '<label class="note" for="f-satz">Unternehmen in einem Satz</label><textarea class="edit-field" id="f-satz" data-path="satz" rows="2">'+esc(s.satz)+'</textarea>';
+  } else {
+    h += '<p class="sentence">'+esc(s.satz)+' '+srcChips(s.satzQ)+'</p>';
+  }
+  h += '<div class="facts">';
+  s.facts.forEach(function(f,i){
+    if(editMode){
+      h += '<div class="fact"><input class="edit-field" data-fact="'+i+'" data-k="v" value="'+esc(f.v)+'" aria-label="Kennzahl"><input class="edit-field" data-fact="'+i+'" data-k="l" value="'+esc(f.l)+'" aria-label="Beschriftung" style="margin-top:4px"><input class="edit-field" data-fact="'+i+'" data-k="q" value="'+esc(f.q)+'" aria-label="Quelle" style="margin-top:4px"></div>';
+    } else {
+      h += '<div class="fact"><div class="v">'+esc(f.v)+'</div><div class="l">'+esc(f.l)+' '+srcChips(f.q)+'</div></div>';
+    }
+  });
+  h += '</div></div>';
+
+  h += '<div class="dims">';
+  s.dims.forEach(function(d,di){
+    h += '<article class="dim'+(d.wide?' wide':'')+'"><h2>'+esc(d.titel)+' <small>'+esc(d.wer)+'</small></h2>';
+    d.el.forEach(function(e,ei){
+      h += '<div class="el"><h3>'+esc(e.n)+'</h3>';
+      if(editMode){
+        h += '<textarea data-dim="'+di+'" data-el="'+ei+'" data-k="t" rows="4" aria-label="'+esc(e.n)+'">'+esc(e.t)+'</textarea>';
+        h += '<label>Quelle<input data-dim="'+di+'" data-el="'+ei+'" data-k="q" value="'+esc(e.q)+'"></label>';
+      } else {
+        h += '<p>'+esc(e.t)+' '+srcChips(e.q)+'</p>';
+      }
+      h += '</div>';
+    });
+    h += '</article>';
+  });
+  h += '</div>';
+
+  h += '<div class="checkin"><div class="box"><h3>Stärke</h3>';
+  h += editMode ? '<textarea class="edit-field" data-path="staerke" rows="3">'+esc(s.staerke)+'</textarea>' : '<p style="margin:0">'+esc(s.staerke)+' '+srcChips(s.staerkeQ)+'</p>';
+  h += '</div><div class="box"><h3>Offene Frage</h3>';
+  h += editMode ? '<textarea class="edit-field" data-path="frage" rows="3">'+esc(s.frage)+'</textarea>' : '<p style="margin:0">'+esc(s.frage)+' '+srcChips(s.frageQ)+'</p>';
+  h += '</div></div>';
+
+  var root = document.getElementById("steckbriefRoot");
+  root.innerHTML = h;
+  if(editMode){
+    root.querySelectorAll("textarea,input").forEach(function(el){
+      el.addEventListener("input", function(){
+        var v = el.value;
+        if(el.dataset.path){ s[el.dataset.path] = v; }
+        else if(el.dataset.fact){ s.facts[+el.dataset.fact][el.dataset.k] = v; }
+        else { s.dims[+el.dataset.dim].el[+el.dataset.el][el.dataset.k] = v; }
+        save();
+      });
+    });
+  }
+}
+document.getElementById("editBtn").addEventListener("click", function(){
+  editMode = !editMode;
+  this.textContent = editMode ? "Bearbeitung beenden" : "Steckbrief bearbeiten";
+  renderSteckbrief();
+});
+
+/* ---------- Radar ---------- */
+function radar(labels, series, opts){
+  opts = opts || {};
+  var size = opts.size || 320, pad = opts.pad || 70, max = 4, padX = opts.padX || pad;
+  var W = size + padX*2, H = size + pad*2 - (labels.length===3 ? 50 : 0);
+  var cx = W/2, cy = pad + size/2 + (labels.length===3 ? 10 : 0), r = size/2;
+  var n = labels.length;
+  function pt(i, v){ var a = -Math.PI/2 + i*2*Math.PI/n; return [cx + Math.cos(a)*r*v/max, cy + Math.sin(a)*r*v/max]; }
+  var s = '<svg class="radar" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(opts.aria||"Netzdiagramm")+'" style="width:100%;height:auto;display:block">';
+  for(var g=1; g<=max; g++){
+    var poly = []; for(var i=0;i<n;i++){ poly.push(pt(i,g).join(",")); }
+    s += '<polygon class="grid" points="'+poly.join(" ")+'"/>';
+    var lp = pt(0,g); s += '<text class="ring-label" x="'+(lp[0]+4)+'" y="'+(lp[1]+3)+'">'+g+'</text>';
+  }
+  for(var j=0;j<n;j++){
+    var e = pt(j,max); s += '<line class="axis" x1="'+cx+'" y1="'+cy+'" x2="'+e[0]+'" y2="'+e[1]+'"/>';
+    var lpos = pt(j, max*1.13), anchor = Math.abs(lpos[0]-cx) < 8 ? "middle" : (lpos[0] > cx ? "start" : "end");
+    var words = String(labels[j]).split(" "), lines = [], cur = "";
+    words.forEach(function(w){ if((cur+" "+w).trim().length > 16){ lines.push(cur.trim()); cur = w; } else cur += " "+w; });
+    lines.push(cur.trim());
+    var dy = lpos[1] < cy - 5 ? -(lines.length-1)*13 : (lpos[1] > cy + 5 ? 4 : -(lines.length-1)*6.5);
+    s += '<text'+(opts.numbers?' style="font-size:15px;font-weight:700"':'')+' text-anchor="'+anchor+'" x="'+lpos[0]+'" y="'+(lpos[1]+dy)+'">';
+    lines.forEach(function(l,k){ s += '<tspan x="'+lpos[0]+'" dy="'+(k?13:0)+'">'+esc(l)+'</tspan>'; });
+    s += '</text>';
+  }
+  series.forEach(function(se){
+    if(se.values.some(function(v){return v==null || isNaN(v);})) return;
+    var poly = se.values.map(function(v,i){ return pt(i,v).join(","); });
+    s += '<polygon class="'+se.cls+'" points="'+poly.join(" ")+'"/>';
+    if(se.cls === "ist"){ se.values.forEach(function(v,i){ var p = pt(i,v); s += '<circle class="pt" r="3.5" cx="'+p[0]+'" cy="'+p[1]+'"/>'; }); }
+  });
+  return s + '</svg>';
+}
+
+/* ---------- Baustein 2 ---------- */
+var STUFEN = ["","analog","analog mit digitalen Prozessen","digital erweitert","digital"];
+function mean(arr, k){ return arr.reduce(function(a,c){return a + (+c[k]);},0) / arr.length; }
+
+function renderOverview(){
+  var els = state.reifegrad.elements, br = state.reifegrad.branche;
+  var ist = els.map(function(e){return mean(e.crit,"ist");});
+  var soll = els.map(function(e){return mean(e.crit,"soll");});
+  var brVals = els.map(function(e){ var v = parseFloat(String(br[e.id]).replace(",",".")); return (v>=1 && v<=4) ? v : null; });
+  var series = [{values:soll, cls:"soll"},{values:ist, cls:"ist"}];
+  var hasBr = brVals.every(function(v){return v!=null;});
+  if(hasBr) series.unshift({values:brVals, cls:"br"});
+  document.getElementById("brLegend").hidden = !hasBr;
+  document.getElementById("radarOverview").innerHTML = radar(els.map(function(e){return e.titel;}), series, {size:260, pad:60, padX:110, aria:"Reifegrad Ist und Soll je Element"});
+
+  var t = '<thead><tr><th>Element</th><th>Ist</th><th>Soll</th><th>Lücke</th><th>Branche</th></tr></thead><tbody>';
+  els.forEach(function(e,i){
+    t += '<tr><td>'+esc(e.titel)+'<br><span class="stage-word">Grad '+Math.round(ist[i])+': '+STUFEN[Math.round(ist[i])]+'</span></td><td>'+fmt(ist[i])+'</td><td>'+fmt(soll[i])+'</td><td>'+fmt(soll[i]-ist[i])+'</td>';
+    t += '<td><input inputmode="decimal" data-br="'+e.id+'" value="'+esc(br[e.id])+'" aria-label="Branchenwert '+esc(e.titel)+'" placeholder="–"></td></tr>';
+  });
+  var all = [].concat.apply([], els.map(function(e){return e.crit;}));
+  t += '<tr><td><strong>Gesamt</strong></td><td><strong>'+fmt(mean(all,"ist"))+'</strong></td><td><strong>'+fmt(mean(all,"soll"))+'</strong></td><td><strong>'+fmt(mean(all,"soll")-mean(all,"ist"))+'</strong></td><td></td></tr></tbody>';
+  var tbl = document.getElementById("meansTable");
+  tbl.innerHTML = t;
+  tbl.querySelectorAll("input[data-br]").forEach(function(inp){
+    inp.addEventListener("change", function(){ br[inp.dataset.br] = inp.value.trim(); save(); renderOverview(); });
+  });
+
+  var list = [];
+  els.forEach(function(e){ e.crit.forEach(function(c,ci){ var gap = c.soll - c.ist; if(gap>0) list.push({e:e, c:c, i:ci, gap:gap, score:gap*c.rel}); }); });
+  list.sort(function(a,b){ return b.score - a.score || a.c.ist - b.c.ist; });
+  var gl = document.getElementById("gapList");
+  if(!list.length){ gl.innerHTML = '<li><div><strong>Keine Lücken</strong><span>Alle Soll-Werte sind erreicht. Prüft, ob die Soll-Werte ehrgeizig genug sind.</span></div></li>'; return; }
+  gl.innerHTML = list.slice(0,3).map(function(x){
+    return '<li><div><strong>'+esc(x.c.n)+' ('+esc(x.e.titel)+')</strong><span>Ist '+x.c.ist+', Soll '+x.c.soll+', Relevanz '+["","niedrig","mittel","hoch"][x.c.rel]+'. '+esc(x.c.b)+'</span></div></li>';
+  }).join("");
+}
+
+function renderElements(){
+  var root = document.getElementById("elementsRoot"), h = "";
+  state.reifegrad.elements.forEach(function(e, ei){
+    h += '<section class="elem" id="el-'+e.id+'"><div class="elem-head"><h2>'+esc(e.titel)+'</h2><span class="m" id="m-'+e.id+'"></span></div>';
+    h += '<div class="elem-body"><div class="elem-chart"><div id="chart-'+e.id+'"></div><div class="legend"><span><i></i>Ist</span><span><i class="soll"></i>Soll</span></div><p class="note" style="margin:6px 0 0">'+esc(e.hint)+' Die Nummern im Diagramm entsprechen den Kriterien rechts.</p></div><div>';
+    e.crit.forEach(function(c, ci){
+      var id = e.id+"-"+ci;
+      h += '<div class="crit" data-e="'+ei+'" data-c="'+ci+'">';
+      h += '<h3><span class="nr">'+(ci+1)+'</span>'+esc(c.n)+(c.p?' <span class="phase">'+esc(c.p)+'</span>':'')+(c.a?' <span class="badge-assume">Annahme</span>':'')+'</h3>';
+      h += '<div class="scale" aria-hidden="true">';
+      c.s.forEach(function(txt, si){ h += '<div data-stufe="'+(si+1)+'"><b>Stufe '+(si+1)+'</b>'+esc(txt)+'</div>'; });
+      h += '</div>';
+      h += '<div class="why"><label for="b-'+id+'">Begründung</label><textarea id="b-'+id+'" data-k="b">'+esc(c.b)+'</textarea><label for="q-'+id+'">Quelle</label><input id="q-'+id+'" data-k="q" value="'+esc(c.q)+'"></div>';
+      h += '<div class="ctrl">';
+      h += '<div><label for="i-'+id+'">Ist</label><select id="i-'+id+'" data-k="ist">'+[1,2,3,4].map(function(v){return '<option'+(v===c.ist?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>';
+      h += '<div><label for="s-'+id+'">Soll</label><select id="s-'+id+'" data-k="soll">'+[1,2,3,4].map(function(v){return '<option'+(v===c.soll?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>';
+      h += '<div class="full"><label for="r-'+id+'">Relevanz für das Geschäftsmodell</label><select id="r-'+id+'" data-k="rel">'+[[1,"niedrig"],[2,"mittel"],[3,"hoch"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===c.rel?' selected':'')+'>'+o[1]+'</option>';}).join("")+'</select></div>';
+      h += '<label class="chk full"><input type="checkbox" data-k="a"'+(c.a?' checked':'')+'> Als Annahme markiert</label>';
+      h += '</div></div>';
+    });
+    h += '</div></div></section>';
+  });
+  root.innerHTML = h;
+
+  root.querySelectorAll(".crit").forEach(function(box){
+    var c = state.reifegrad.elements[+box.dataset.e].crit[+box.dataset.c];
+    box.querySelectorAll("[data-k]").forEach(function(inp){
+      var k = inp.dataset.k;
+      var evt = (inp.tagName === "SELECT" || inp.type === "checkbox") ? "change" : "input";
+      inp.addEventListener(evt, function(){
+        if(k === "a"){ c.a = inp.checked; var h3 = box.querySelector("h3"); var b = h3.querySelector(".badge-assume"); if(c.a && !b){ h3.insertAdjacentHTML("beforeend",' <span class="badge-assume">Annahme</span>'); } else if(!c.a && b){ b.remove(); } }
+        else if(k === "ist" || k === "soll" || k === "rel"){ c[k] = +inp.value; updateCrit(box, c); updateCharts(); renderOverview(); }
+        else { c[k] = inp.value; if(k==="b") renderOverview(); }
+        save();
+      });
+    });
+    updateCrit(box, c);
+  });
+  updateCharts();
+}
+function updateCrit(box, c){
+  box.querySelectorAll(".scale div").forEach(function(d){
+    var st = +d.dataset.stufe;
+    d.classList.toggle("is-ist", st === c.ist);
+    d.classList.toggle("is-soll", st === c.soll);
+  });
+}
+function updateCharts(){
+  state.reifegrad.elements.forEach(function(e){
+    var labels = e.crit.map(function(c,i){return i+1;});
+    document.getElementById("chart-"+e.id).innerHTML = radar(labels, [{values:e.crit.map(function(c){return c.soll;}), cls:"soll"},{values:e.crit.map(function(c){return c.ist;}), cls:"ist"}], {size:260, pad:34, numbers:true, aria:"Netzdiagramm "+e.titel+", Nummern wie in der Kriterienliste"});
+    document.getElementById("m-"+e.id).textContent = "Mittelwert Ist "+fmt(mean(e.crit,"ist"))+" · Soll "+fmt(mean(e.crit,"soll"));
+  });
+}
+
+function renderTexts(){
+  var rg = state.reifegrad;
+  var bt = document.getElementById("branchText"); bt.value = rg.branchText;
+  bt.oninput = function(){ rg.branchText = bt.value; save(); };
+  document.getElementById("branchSrc").innerHTML = "Belege: "+srcChips("Q13, Q6")+" Peer-Gruppe und Plattformrisiko sind eigene Einordnung.";
+  var pt = document.getElementById("perceptionText"); pt.value = rg.perception;
+  pt.oninput = function(){ rg.perception = pt.value; save(); };
+  var lf = document.getElementById("leitfragen");
+  lf.innerHTML = rg.leitfragen.map(function(x,i){ return '<li><strong>'+esc(x.f)+'</strong><textarea data-lf="'+i+'" aria-label="Antwort auf Leitfrage '+(i+1)+'">'+esc(x.a)+'</textarea></li>'; }).join("");
+  lf.querySelectorAll("textarea").forEach(function(ta){ ta.addEventListener("input", function(){ rg.leitfragen[+ta.dataset.lf].a = ta.value; save(); }); });
+}
+
+function renderSources(){
+  document.getElementById("sourceList").innerHTML = Object.keys(SOURCES).map(function(k){
+    var s = SOURCES[k];
+    return '<li id="src-'+k+'"><b>'+k+'</b><span>'+esc(s.t)+(s.u?' – <a href="'+esc(s.u)+'" target="_blank" rel="noopener">Link</a>':'')+'</span></li>';
+  }).join("");
+}
+
+/* ---------- Routing ---------- */
+function route(){
+  var h = (location.hash || "").replace("#","");
+  if(h.indexOf("src-") === 0) return;
+  var view = h === "reifegrad" ? "reifegrad" : "steckbrief";
+  document.getElementById("view-steckbrief").hidden = view !== "steckbrief";
+  document.getElementById("view-reifegrad").hidden = view !== "reifegrad";
+  document.querySelectorAll(".steps a").forEach(function(a){ if(a.dataset.view === view) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  document.title = (view === "reifegrad" ? "Reifegrad" : "Steckbrief") + " – Analyse-Tool TeamViewer";
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- Theme ---------- */
+document.getElementById("themeBtn").addEventListener("click", function(){
+  var root = document.documentElement;
+  var cur = root.getAttribute("data-theme");
+  var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+});
+
+document.getElementById("resetBtn").addEventListener("click", function(){
+  if(!confirm("Alle Änderungen verwerfen und den Ausgangsstand laden?")) return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  state = clone(DEFAULT); editMode = false;
+  document.getElementById("editBtn").textContent = "Steckbrief bearbeiten";
+  renderAll();
+});
+
+function renderAll(){ renderSteckbrief(); renderElements(); renderOverview(); renderTexts(); renderSources(); }
+renderAll();
+route();
+})();
+</script>
+</body>
+</html>
