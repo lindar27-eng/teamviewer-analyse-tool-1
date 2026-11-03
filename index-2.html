@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analyse-Tool TeamViewer – Steckbrief, Reifegrad, Muster und Ideen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#E9EDF3; --ink:#14233A; --ink-2:#4A5A72; --line:#D3DAE5;
+  --ist:#1D63D8; --ist-soft:rgba(29,99,216,.16); --soll:#B86A00; --soll-soft:rgba(184,106,0,.10); --branche:#2E8B6E;
+  --warn:#9A3B00; --warn-bg:#FFF1E2; --focus:#1D63D8;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1724; --surface:#172234; --surface-2:#1F2C42; --ink:#E7ECF4; --ink-2:#A6B3C7; --line:#2C3B55;
+    --ist:#6EA4FF; --ist-soft:rgba(110,164,255,.20); --soll:#F0A640; --soll-soft:rgba(240,166,64,.12); --branche:#5CC8A3;
+    --warn:#FFB77A; --warn-bg:#3A2614; --focus:#6EA4FF; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1724; --surface:#172234; --surface-2:#1F2C42; --ink:#E7ECF4; --ink-2:#A6B3C7; --line:#2C3B55;
+  --ist:#6EA4FF; --ist-soft:rgba(110,164,255,.20); --soll:#F0A640; --soll-soft:rgba(240,166,64,.12); --branche:#5CC8A3;
+  --warn:#FFB77A; --warn-bg:#3A2614; --focus:#6EA4FF; color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px)}
+body{margin:0;overflow-x:clip;background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:17px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+h1,h2,h3,h4{font-family:"Archivo","Arial Narrow",Arial,sans-serif;line-height:1.15;margin:0}
+a{color:var(--ist)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+button,select,input,textarea{font:inherit;color:inherit}
+
+/* Kopf */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ink);color:#fff}
+:root[data-theme="dark"] .topbar{background:#0A101B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .topbar{background:#0A101B}}
+.topbar-inner{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:16px;letter-spacing:.01em;white-space:nowrap}
+.brand span{opacity:.65;font-weight:500}
+.steps{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
+.steps a,.steps span{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:6px;text-decoration:none;color:#fff;font-size:15px;white-space:nowrap}
+.steps b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);font-size:12px;font-family:Archivo,Arial,sans-serif}
+.steps a[aria-current="page"]{background:rgba(255,255,255,.14)}
+.steps a[aria-current="page"] b{background:#fff;color:#14233A;border-color:#fff}
+.steps a:hover{background:rgba(255,255,255,.08)}
+.steps span{opacity:.38;cursor:default}
+.theme-btn{background:none;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:14px}
+
+main{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+.view[hidden]{display:none}
+.page-head{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-bottom:22px}
+.page-head h1{font-size:clamp(30px,4.4vw,48px);font-weight:800;letter-spacing:-.01em}
+.page-head p{margin:8px 0 0;color:var(--ink-2);max-width:68ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:15px}
+.btn.primary{background:var(--ist);border-color:var(--ist);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0F1724}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0F1724}}
+.note{font-size:14px;color:var(--ink-2)}
+
+/* Steckbrief */
+.lede{background:var(--surface);border-left:6px solid var(--ist);padding:18px 22px;margin-bottom:18px}
+.lede .sentence{font-family:Archivo,Arial,sans-serif;font-size:clamp(19px,2.2vw,24px);font-weight:600;line-height:1.3;max-width:62ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:16px}
+.fact{background:var(--surface);padding:10px 12px}
+.fact .v{font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:20px}
+.fact .l{font-size:14px;color:var(--ink-2);line-height:1.3}
+.dims{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.dim{background:var(--surface);border:1px solid var(--line);padding:16px 18px 12px;grid-column:span 2}
+.dim.wide{grid-column:span 3}
+.dim h2{font-size:21px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dim h2 small{font-family:"Source Sans 3",sans-serif;font-weight:400;font-size:14px;color:var(--ink-2)}
+.el{padding:10px 0;border-top:1px solid var(--line)}
+.el:first-of-type{margin-top:10px}
+.el h3{font-size:15px;font-weight:600;color:var(--ink-2);font-family:"Source Sans 3",sans-serif;margin-bottom:2px}
+.el p{margin:0}
+.src{display:inline-block;font-size:13px;line-height:1.2;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);text-decoration:none;margin-left:4px;vertical-align:1px;white-space:nowrap}
+.src.assume{background:var(--warn-bg);color:var(--warn)}
+.el textarea,.el input,.edit-field{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 8px;resize:vertical}
+.el label{display:block;font-size:13px;color:var(--ink-2);margin-top:4px}
+.checkin{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.checkin .box{background:var(--surface);border:1px solid var(--line);padding:14px 18px}
+.checkin h3{font-size:17px;margin-bottom:4px}
+
+/* Reifegrad */
+.overview{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:18px;margin-bottom:26px}
+.panel{background:var(--surface);border:1px solid var(--line);padding:18px 20px;min-width:0}
+.overview>*,.elem-body>*,.two>*,.dims>*,.crit>*{min-width:0}
+.table-wrap{overflow-x:auto}
+.panel h2{font-size:22px;font-weight:700;margin-bottom:10px}
+.panel h3{font-size:17px;font-weight:700;margin:16px 0 6px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-2);margin-top:6px}
+.legend i{display:inline-block;width:22px;height:0;border-top:3px solid var(--ist);vertical-align:middle;margin-right:6px}
+.legend i.soll{border-top:3px dashed var(--soll)}
+.legend i.br{border-top:3px dotted var(--branche)}
+.means{width:100%;border-collapse:collapse;font-size:16px}
+.means th,.means td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right}
+.means th:first-child,.means td:first-child{text-align:left}
+.means thead th{font-size:14px;color:var(--ink-2);font-weight:600}
+.means input{width:64px;text-align:right;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:2px 6px}
+.stage-word{font-size:14px;color:var(--ink-2)}
+.gaps{list-style:none;padding:0;margin:0;counter-reset:g}
+.gaps li{counter-increment:g;display:grid;grid-template-columns:34px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.gaps li::before{content:counter(g);font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:26px;color:var(--soll);line-height:1}
+.gaps strong{display:block}
+.gaps span{font-size:14px;color:var(--ink-2)}
+
+.elem{margin-bottom:28px}
+.elem-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.elem-head h2{font-size:26px;font-weight:800}
+.elem-head .m{font-size:15px;color:var(--ink-2)}
+.elem-body{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+.elem-chart{background:var(--surface);border:1px solid var(--line);padding:10px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px)}
+.crit{background:var(--surface);border:1px solid var(--line);margin-bottom:8px;padding:12px 14px;display:grid;grid-template-columns:1fr 210px;gap:6px 18px}
+.crit h3{font-size:17px;font-weight:700;grid-column:1/-1;display:flex;gap:10px;align-items:baseline}
+.crit h3 .nr{color:var(--ink-2);font-weight:600;font-size:15px;min-width:22px}
+.crit h3 .phase{font-family:"Source Sans 3",sans-serif;font-weight:400;font-size:14px;color:var(--ink-2)}
+.scale{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:2px 0 4px}
+.scale div{font-size:13px;line-height:1.3;padding:6px 7px;background:var(--surface-2);color:var(--ink-2);border-top:3px solid transparent;position:relative}
+.scale div b{display:block;font-size:12px;color:var(--ink-2)}
+.scale div.is-ist{background:var(--ist-soft);color:var(--ink);border-top-color:var(--ist)}
+.scale div.is-soll{border-top:3px dashed var(--soll)}
+.scale div.is-ist.is-soll{border-top:3px solid var(--ist);box-shadow:inset 0 -3px 0 var(--soll)}
+.crit .why textarea,.crit .why input{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 8px;font-size:15px}
+.crit .why textarea{min-height:80px;resize:vertical}
+.crit .why label,.crit .ctrl label{font-size:13px;color:var(--ink-2);display:block;margin-top:4px}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;align-content:start}
+.ctrl select{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:5px 6px}
+.ctrl .full{grid-column:1/-1}
+.ctrl .chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-2);margin-top:6px}
+.badge-assume{font-family:"Source Sans 3",sans-serif;font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-bg);padding:1px 7px;border-radius:999px}
+
+.text-block textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:8px 10px;resize:vertical;font-size:16px}
+.lf{counter-reset:lf;list-style:none;padding:0;margin:0}
+.lf li{counter-increment:lf;padding:12px 0;border-top:1px solid var(--line)}
+.lf li>strong{display:block;margin-bottom:6px}
+.lf li>strong::before{content:counter(lf) ". ";color:var(--soll)}
+.lf textarea{width:100%;min-height:72px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:7px 9px;resize:vertical;font-size:15.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+.sources{margin-top:34px}
+.sources h2{font-size:22px;margin-bottom:8px}
+.sources ol{padding-left:0;list-style:none;margin:0;font-size:15px}
+.sources li{padding:6px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:44px 1fr;gap:8px}
+.sources li b{font-family:Archivo,Arial,sans-serif;color:var(--ink-2)}
+.sources li:target{background:var(--soll-soft)}
+.foot{margin-top:24px;font-size:14px;color:var(--ink-2)}
+
+svg.radar text{font-family:"Source Sans 3",Arial,sans-serif;fill:var(--ink-2);font-size:11.5px}
+svg.radar .grid{fill:none;stroke:var(--line)}
+svg.radar .axis{stroke:var(--line)}
+svg.radar .ist{fill:var(--ist-soft);stroke:var(--ist);stroke-width:2.2}
+svg.radar .soll{fill:none;stroke:var(--soll);stroke-width:2;stroke-dasharray:6 4}
+svg.radar .br{fill:none;stroke:var(--branche);stroke-width:2;stroke-dasharray:2 4}
+svg.radar circle.pt{fill:var(--ist)}
+svg.radar .ring-label{font-size:10px}
+
+
+/* Baustein 3 */
+:root{--g-ok:#2E8B57;--g-mid:#B8860B;--g-bad:#C0392B;--chg:rgba(184,106,0,.13)}
+:root[data-theme="dark"]{--g-ok:#5CC88A;--g-mid:#F0C040;--g-bad:#FF7A6B;--chg:rgba(240,166,64,.16)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--g-ok:#5CC88A;--g-mid:#F0C040;--g-bad:#FF7A6B;--chg:rgba(240,166,64,.16)}}
+.sec-title{font-size:26px;font-weight:800;border-bottom:2px solid var(--ink);padding-bottom:6px;margin:34px 0 12px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sec-title small{font-family:"Source Sans 3",sans-serif;font-weight:400;font-size:15px;color:var(--ink-2)}
+.tri-wrap{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+.tri-wrap>*{min-width:0}
+svg.tri text{font-family:Archivo,Arial,sans-serif;font-weight:700;fill:var(--ink);font-size:17px}
+svg.tri polygon{fill:var(--ist-soft);stroke:var(--ist);stroke-width:2}
+svg.tri circle{fill:var(--surface);stroke:var(--soll);stroke-width:2}
+.dq{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dq .box{background:var(--surface);border:1px solid var(--line);padding:10px 12px}
+.dq h3{font-size:16px;margin-bottom:4px}
+.dq h3 small{font-family:"Source Sans 3",sans-serif;font-weight:400;color:var(--ink-2);font-size:13px}
+.dq textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 8px;resize:vertical;font-size:15px}
+.pat-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.pat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:6px}
+.pat{border:1px solid var(--line);background:var(--surface);padding:8px 10px 9px;text-align:left;cursor:pointer;border-radius:4px;line-height:1.25;display:block;width:100%}
+.pat .no{font-family:Archivo,Arial,sans-serif;font-weight:700;color:var(--ink-2);font-size:13px}
+.pat .nm{display:block;font-weight:700;font-size:15px}
+.pat .ds{display:block;font-size:13px;color:var(--ink-2);margin-top:2px}
+.pat.on{border-color:var(--ist);box-shadow:inset 4px 0 0 var(--ist);background:var(--ist-soft)}
+.pat.on.kern{box-shadow:inset 7px 0 0 var(--ist)}
+.pat .tag{font-size:11px;font-weight:600;color:var(--soll);margin-left:4px}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;margin-top:14px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--ist);padding:10px 12px}
+.pcard h3{font-size:16px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.pcard .row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.pcard label{font-size:12.5px;color:var(--ink-2);display:block}
+.pcard textarea,.pcard input,.pcard select{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:5px 7px;font-size:14.5px}
+.pcard textarea{min-height:66px;resize:vertical}
+.wts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.wts label{display:block;font-weight:600;font-size:15px}
+.wts output{font-family:Archivo,Arial,sans-serif;font-weight:700;float:right}
+.wts input[type=range]{width:100%;accent-color:var(--ist)}
+.board{width:100%;border-collapse:collapse;font-size:15px;min-width:860px}
+.board th,.board td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+.board thead th{font-size:13px;color:var(--ink-2);font-weight:600}
+.board td.num,.board th.num{text-align:center}
+.board select{border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:3px 4px}
+.board .rank{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:20px;color:var(--soll)}
+.board .sum{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:18px}
+.board tr.top td{background:var(--soll-soft)}
+.board .ttl{font-weight:700;display:block}
+.board .sub{font-size:13px;color:var(--ink-2)}
+.letter{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--surface);font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:13px;margin-right:6px;vertical-align:1px}
+.amp{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:5px}
+.amp.gruen{background:var(--g-ok)}.amp.gelb{background:var(--g-mid)}.amp.rot{background:var(--g-bad)}
+.det{background:var(--surface-2);padding:10px 12px}
+.det-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.det label{font-size:12.5px;color:var(--ink-2);display:block}
+.det textarea,.det input,.det select{width:100%;border:1px solid var(--line);border-radius:4px;background:var(--surface);padding:5px 7px;font-size:14.5px}
+.det textarea{min-height:70px;resize:vertical}
+.linkbtn{background:none;border:none;color:var(--ist);cursor:pointer;padding:0;font-size:13px;text-decoration:underline}
+svg.omap text{font-family:"Source Sans 3",Arial,sans-serif;fill:var(--ink-2);font-size:12px}
+svg.omap .q{fill:var(--surface-2)}
+svg.omap .ax{stroke:var(--ink-2)}
+svg.omap .gl{stroke:var(--line);stroke-dasharray:3 3}
+svg.omap .bub{stroke-width:3}
+svg.omap .lt{fill:#fff;font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:13px}
+.sens{width:100%;border-collapse:collapse;font-size:15px}
+.sens th,.sens td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:left}
+.sens thead th{font-size:13px;color:var(--ink-2);font-weight:600}
+.verdict{margin-top:10px;padding:8px 12px;border-left:4px solid var(--ist);background:var(--ist-soft);font-size:15px}
+.top-card{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--soll);padding:16px 18px;margin-bottom:20px}
+.top-card>h3{font-size:22px;font-weight:800;margin-bottom:4px}
+.top-card .meta{color:var(--ink-2);font-size:15px;margin-bottom:10px}
+.vn{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+.vn th,.vn td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+.vn th{font-size:13px;color:var(--ink-2);font-weight:600}
+.vn td:first-child{font-family:Archivo,Arial,sans-serif;font-weight:700;width:70px}
+.vn tr.chg td:last-child{background:var(--chg)}
+.vn .same{color:var(--ink-2);font-style:italic}
+.bmc{display:grid;grid-template-columns:repeat(10,1fr);grid-template-areas:"kp kp ka ka vp vp cr cr cs cs" "kp kp kr kr vp vp ch ch cs cs" "co co co co co re re re re re";gap:4px;margin-top:8px;font-size:13.5px;min-width:760px}
+.bmc div{background:var(--surface-2);padding:7px 8px;line-height:1.3}
+.bmc b{display:block;font-size:12px;color:var(--ink-2);margin-bottom:2px}
+.bmc .new{background:var(--chg);outline:2px solid var(--soll)}
+.bmc .new em{display:block;font-style:normal;color:var(--ink);font-weight:600;margin-top:4px}
+.bmc .new em::before{content:"Neu: ";color:var(--soll)}
+.emp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px}
+.emp .f{background:var(--surface-2);padding:8px 10px}
+.emp label{font-family:Archivo,Arial,sans-serif;font-weight:700;font-size:14px;display:block;margin-bottom:4px}
+.emp textarea{width:100%;min-height:128px;border:1px solid var(--line);border-radius:4px;background:var(--surface);padding:6px 8px;font-size:14.5px;resize:vertical}
+.kanni{margin-top:10px;font-size:15px}
+.mk{width:100%;border-collapse:collapse;font-size:15px}
+.mk th,.mk td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+.mk thead th{font-size:13px;color:var(--ink-2);font-weight:600}
+.quad{font-weight:700}
+.ueb{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ueb .box{background:var(--surface);border:1px solid var(--line);padding:12px 14px}
+.ueb h3{font-size:17px;margin-bottom:4px}
+.ueb dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:4px 10px;font-size:15px}
+.ueb dt{color:var(--ink-2);font-weight:600}
+.ueb dd{margin:0}
+@media (max-width:900px){
+  .tri-wrap,.dq,.wts,.det-grid,.emp,.ueb{grid-template-columns:1fr}
+  .pcard .row{grid-template-columns:1fr}
+}
+
+@media (max-width:900px){
+  .dims{grid-template-columns:1fr}
+  .dim,.dim.wide{grid-column:auto}
+  .overview,.elem-body,.two,.checkin{grid-template-columns:1fr}
+  .elem-chart{position:static;max-width:420px}
+  .crit{grid-template-columns:1fr}
+  .scale{grid-template-columns:1fr 1fr}
+  .page-head{grid-template-columns:1fr}
+  .steps{order:3;flex-basis:100%}
+  .theme-btn{margin-left:auto}
+  .actions{justify-content:flex-start}
+}
+@media print{
+  .topbar,.actions{display:none}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">TeamViewer SE <span>Analyse-Tool</span></div>
+    <nav class="steps" aria-label="Bausteine">
+      <a href="#steckbrief" data-view="steckbrief"><b>1</b>Steckbrief</a>
+      <a href="#reifegrad" data-view="reifegrad"><b>2</b>Reifegrad</a>
+      <a href="#muster" data-view="muster"><b>3</b>Muster und Ideen</a>
+      <span title="Folgt in Termin 4"><b>4</b>Customer Journey</span>
+      <span title="Folgt in Termin 5"><b>5</b>Open Innovation</span>
+      <span title="Folgt in Termin 6"><b>6</b>Ökosystem</span>
+      <span title="Folgt in Termin 7"><b>7</b>Erlösmodell und KI</span>
+    </nav>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Hell- oder Dunkelmodus umschalten">Hell/Dunkel</button>
+  </div>
+</header>
+
+<main>
+  <!-- BAUSTEIN 1 -->
+  <section class="view" id="view-steckbrief" aria-labelledby="h-steckbrief">
+    <div class="page-head">
+      <div>
+        <h1 id="h-steckbrief">Steckbrief</h1>
+        <p>Das Geschäftsmodell von TeamViewer in den fünf Dimensionen nach Schallmo, je Element mit Quelle. Stand: 03.11.2026.</p>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="editBtn" type="button">Steckbrief bearbeiten</button>
+      </div>
+    </div>
+    <div id="steckbriefRoot"></div>
+  </section>
+
+  <!-- BAUSTEIN 2 -->
+  <section class="view" id="view-reifegrad" aria-labelledby="h-reifegrad" hidden>
+    <div class="page-head">
+      <div>
+        <h1 id="h-reifegrad">Digitaler Reifegrad</h1>
+        <p>Bewertung nach Appelfeller/Feldmann (Grad 1 bis 4) für Produkt, Kundenanbindung und Geschäftsmodell. Jede Stufe hat eine Begründung und einen Beleg; Annahmen sind markiert. Im Zweifel gilt die niedrigere Stufe.</p>
+      </div>
+    </div>
+
+    <div class="overview">
+      <div class="panel">
+        <h2>Ist und Soll im Überblick</h2>
+        <div id="radarOverview"></div>
+        <div class="legend"><span><i></i>Ist</span><span><i class="soll"></i>Soll</span><span id="brLegend" hidden><i class="br"></i>Branche</span></div>
+      </div>
+      <div class="panel">
+        <h2>Mittelwerte je Element</h2>
+        <div class="table-wrap"><table class="means" id="meansTable"></table></div>
+        <p class="note">Branchenwert optional: nur eintragen, wenn ein belegter Vergleichswert vorliegt. Leere Felder werden im Diagramm nicht gezeigt.</p>
+        <h3>Die drei größten Lücken</h3>
+        <ol class="gaps" id="gapList"></ol>
+        <p class="note">Ranking nach Lücke (Soll minus Ist) mal Relevanz für das Geschäftsmodell; bei Gleichstand zuerst das Kriterium mit niedrigerem Ist.</p>
+      </div>
+    </div>
+
+    <div id="elementsRoot"></div>
+
+    <div class="two">
+      <div class="panel text-block">
+        <h2>Branche und Wettbewerb</h2>
+        <textarea id="branchText" aria-label="Branche und Wettbewerb"></textarea>
+        <p class="note" id="branchSrc"></p>
+      </div>
+      <div class="panel text-block">
+        <h2>Abgleich mit unserer Wahrnehmung</h2>
+        <textarea id="perceptionText" aria-label="Abgleich mit unserer Wahrnehmung" placeholder="Stimmt das Ergebnis mit eurem Eindruck überein? Wo würdet ihr anders einstufen und warum?"></textarea>
+        <p class="note">Wird von der Gruppe ausgefüllt.</p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>Leitfragen nach Appelfeller/Feldmann</h2>
+      <ol class="lf" id="leitfragen"></ol>
+    </div>
+  </section>
+
+  <!-- BAUSTEIN 3 -->
+  <section class="view" id="view-muster" aria-labelledby="h-muster" hidden>
+    <div class="page-head">
+      <div>
+        <h1 id="h-muster">Muster und Ideen</h1>
+        <p>St. Galler Business Model Navigator nach Gassmann et al.: Geschäftsmodell im Magischen Dreieck, erkannte Muster mit Beleg, Ideen aus den KI-Anwendungen von TeamViewer mit gewichteter Bewertung, Top-2-Ideen vorher und nachher sowie Empfehlungsentwürfe.</p>
+      </div>
+    </div>
+
+    <h2 class="sec-title">1 Geschäftsmodell heute <small>Magisches Dreieck: Wer, Was, Wie, Wert</small></h2>
+    <div class="tri-wrap">
+      <div class="panel">
+        <svg class="tri" viewBox="0 0 300 260" role="img" aria-label="Magisches Dreieck mit Wer in der Mitte und Was, Wie, Wert an den Ecken" style="width:100%;height:auto;display:block">
+          <polygon points="150,22 22,236 278,236"/>
+          <circle cx="150" cy="160" r="34"/>
+          <text x="150" y="166" text-anchor="middle">Wer?</text>
+          <text x="150" y="16" text-anchor="middle">Was?</text>
+          <text x="22" y="256" text-anchor="middle">Wie?</text>
+          <text x="278" y="256" text-anchor="middle">Wert?</text>
+        </svg>
+        <p class="note" style="margin:8px 0 0">Kunde in der Mitte, Nutzenversprechen, Wertschöpfung und Ertragsmechanik an den Ecken. Ändert sich eine Ecke, müssen die anderen mitziehen. <span id="triSrc"></span></p>
+      </div>
+      <div class="dq" id="dreieckRoot"></div>
+    </div>
+
+    <h2 class="sec-title">2 Erkannte Muster <small id="patCount"></small></h2>
+    <div class="pat-tools">
+      <button class="btn" type="button" id="patFilter">Nur erkannte Muster zeigen</button>
+      <span class="note">Kachel anklicken, um ein Muster zu markieren oder die Markierung zu entfernen. Breiter Balken: Kernmuster. Nummerierung nach Gassmann et al. (Muster 56–60 ab 2. Auflage) <span id="patSrc"></span></span>
+    </div>
+    <div class="pat-grid" id="patGrid"></div>
+    <div class="pcards" id="patCards"></div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>Übung Termin 3: Unsere Muster 55 bis 60</h2>
+      <p class="note" style="margin-top:0">Gruppe 10 hatte White Label, Sensor as a Service, Virtualisation, Object Self-Service, Object as Point of Sale und Prosumer. Die zwei relevantesten für digitale Geschäftsmodelle (eigene Einordnung):</p>
+      <div class="ueb" id="uebRoot"></div>
+    </div>
+
+    <h2 class="sec-title">3 Ideen-Board <small>Kriterien 1 bis 5, Gewichte änderbar, Ranking sortiert sich live</small></h2>
+    <div class="panel">
+      <h2 style="font-size:19px">Gewichte</h2>
+      <div class="wts" id="wtsRoot"></div>
+      <p class="note" style="margin:8px 0 0" id="wtsNote"></p>
+    </div>
+    <div class="panel table-wrap" style="margin-top:12px;padding:10px 12px">
+      <table class="board" id="board"></table>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn" type="button" id="addIdea">Idee hinzufügen</button>
+        <span class="note" id="ideaCount"></span>
+      </div>
+    </div>
+
+    <div class="two" style="margin-top:12px">
+      <div class="panel">
+        <h2 style="font-size:19px">Opportunity Map</h2>
+        <div id="omap"></div>
+        <p class="note" style="margin:6px 0 0">x: Machbarkeit, y: Attraktivität (Nutzen und Erlöse nach ihren Gewichten). Randfarbe: Ampel aus dem Risiko-Check. Vereinfachte Darstellung nach BMI Lab.</p>
+      </div>
+      <div class="panel">
+        <h2 style="font-size:19px">Test: Bleibt das Ranking stabil?</h2>
+        <div class="table-wrap"><table class="sens" id="sens"></table></div>
+        <div class="verdict" id="verdict"></div>
+        <p class="note">Rechenregel: Punkte mal normiertes Gewicht, summiert. Beim Risiko bedeutet 5 wenig Risiko. Bei Gleichstand entscheidet der höhere Nutzen.</p>
+      </div>
+    </div>
+
+    <h2 class="sec-title">4 Top-2-Ideen <small>Vorher und nachher, Business Model Canvas, Empfehlungsentwurf</small></h2>
+    <div id="topRoot"></div>
+
+    <h2 class="sec-title">5 Maßnahmenkandidaten <small>Übergabe an „Maßnahmen und Roadmap“</small></h2>
+    <div class="panel table-wrap">
+      <table class="mk" id="mkTable"></table>
+      <p class="note">Wirkung = Nutzen, Aufwand = 6 minus Machbarkeit, Risiko = 6 minus Risikopunkte. Quick Win: Wirkung ab 4 und Aufwand bis 2. Großes Vorhaben: Wirkung ab 4 und Aufwand ab 3.</p>
+    </div>
+  </section>
+
+  <section class="sources" aria-labelledby="h-src">
+    <h2 id="h-src">Quellen</h2>
+    <ol id="sourceList"></ol>
+    <p class="foot">Einordnungen und Stufen sind eigene Bewertungen der Gruppe auf Basis öffentlicher Quellen, keine Aussagen von TeamViewer. Änderungen werden nur in diesem Browser gespeichert. <button class="btn" id="resetBtn" type="button">Auf Ausgangsstand zurücksetzen</button></p>
+  </section>
+</main>
+
+<script>
+(function(){
+"use strict";
+var KEY = "tmv-analyse-tool";
+var VERSION = 1;
+
+var SOURCES = {
+  Q1:{t:"TeamViewer SE: Ergebnisse Q4/GJ 2025, Quartalsmitteilung, 10.02.2026", u:"https://ir-api.eqs.com//media/document/e778698f-f18e-423f-b1a4-383efae07265/assets/260210_TMV_Q4-FY_2025_Quarterly_statement_DE.pdf"},
+  Q2:{t:"TeamViewer SE: EQS-News Q3 2026, 03.11.2026 (über boerse.de)", u:"https://www.boerse.de/nachrichten/EQS-News-TeamViewer-Q3-2026-Starke-Dynamik-im-Neugeschaeft-bei-TeamViewer-ONE-und-den-Enterprise-Grosskunden-Trendwende-im-DEX-Geschaeft-setzt-sich-fort-Umsatz-Jahresprognose-angesichts-gedaempfter-Aussichten-f/38700192"},
+  Q3:{t:"dpa-AFX: Teamviewer kappt Umsatzprognose, 03.11.2026 (über onvista)", u:"https://www.onvista.de/news/2026/11-03-roundup-teamviewer-kappt-umsatzprognose-aktie-rutscht-stark-ab-0-10-26571645"},
+  Q4:{t:"Reuters/Börsen-Zeitung: Teamviewer senkt Ausblick, 03.11.2026", u:"https://www.boersen-zeitung.de/unternehmen-branchen/teamviewer-senkt-ausblick"},
+  Q5:{t:"Admiral Markets: Auswertung der Q2-2026-Mitteilung von TeamViewer (Segmente, Regionen), 10/2026", u:"https://admiralmarkets.com/de/wissen/articles/shares/teamviewer-aktie-prognose-q3-2026"},
+  Q6:{t:"TeamViewer Pressebereich, Pressemitteilungen 2025–2026 (u. a. Tia 13.11.2025, Intune 24.02.2026, ServiceNow 22.07.2026, ONE 29.09.2026), abgerufen 03.11.2026", u:"https://www.teamviewer.com/de/unternehmen/presse/"},
+  Q7:{t:"Wikipedia: TeamViewer (company), abgerufen 03.11.2026", u:"https://en.wikipedia.org/wiki/TeamViewer_(company)"},
+  Q8:{t:"boerse.de: Fundamentalanalyse TeamViewer (Personal 2025), abgerufen 03.11.2026", u:"https://www.boerse.de/fundamental-analyse/TeamViewer-Aktie/DE000A2YN900"},
+  Q9:{t:"stock-world: TeamViewer Aktie – Prognose gesenkt, 03.11.2026", u:"https://www.stock-world.de/teamviewer-aktie-prognose-gesenkt/"},
+  Q10:{t:"IT Reseller: Teamviewer übernimmt IT-Service-Desk-Anbieter 1E, 10.12.2024 (Übersichtsseite)", u:"https://www.itreseller.ch/Artikel/103681/Teamviewer_waechst_vor_allem_mit_Grosskunden.html"},
+  Q11:{t:"Appelfeller, W./Feldmann, C. (2018): Die digitale Transformation des Unternehmens, Springer (Reifegradmodell, Kursfolien Termin 2)", u:""},
+  Q12:{t:"Schallmo, D. (2013): Geschäftsmodelle erfolgreich entwickeln und implementieren, Springer (Dimensionen, Kursfolien Termin 2)", u:""},
+  Q13:{t:"Eurostat: Digitalisation in Europe 2026 (Daten 2025); Bitkom: DESI-Index 2026, 03.08.2026 (Kursfolien Termin 1 und 2)", u:""},
+  Q14:{t:"PC-WELT: TeamViewer Download (Softwaretyp Freeware für private Nutzung), 30.08.2026", u:"https://www.pcwelt.de/article/1134981/teamviewer-6.html"},
+  Q15:{t:"Gassmann, O./Frankenberger, K./Csik, M. (2013, 2017, 2022): Geschäftsmodelle entwickeln – 55+ innovative Konzepte mit dem St. Galler Business Model Navigator, Hanser (Muster, Magisches Dreieck, Ähnlichkeits- und Konfrontationsprinzip)", u:"https://www.hanser-fachbuch.de/fachbuch/artikel/9783446465213"},
+  Q16:{t:"Pearson: Gassmann/Frankenberger/Choudury, The Business Model Navigator, 2. Aufl. 2020, Inhaltsverzeichnis mit Mustern 56–60", u:"https://eu.pearson.com/business-model-navigator-the/9781292327143"},
+  Q17:{t:"Kursfolien Termin 3 (03.11.2026): Preismodelle für KI (Microsoft, Fin), Bewertungsmatrix, Risiko-Check, Kannibalisierung, Empfehlungsvorlage", u:""}
+};
+
+var DEFAULT = {
+  v: VERSION,
+  steckbrief: {
+    satz: "TeamViewer verbindet Menschen mit Geräten aus der Ferne – vom Fernsupport für kleine Firmen bis zur KI-gestützten Verwaltung ganzer Arbeitsplatz- und Industrieumgebungen, verkauft im Abonnement.",
+    satzQ: "Q6",
+    facts: [
+      {v:"767,5 Mio. €", l:"Umsatz 2025 pro forma (+5 % währungsbereinigt)", q:"Q1"},
+      {v:"44,3 %", l:"Bereinigte EBITDA-Marge 2025", q:"Q1"},
+      {v:"736,9 Mio. €", l:"ARR Q3 2026 (wiederkehrender Jahresumsatz)", q:"Q2"},
+      {v:"> 645.000", l:"Zahlende Kunden (Stand 2025)", q:"Q6"},
+      {v:"1.925", l:"Mitarbeitende Ende 2025", q:"Q8"},
+      {v:"SDAX", l:"Sitz Göppingen, gegründet 2005", q:"Q3, Q7"}
+    ],
+    dims: [
+      {id:"kunden", titel:"Kunden", wer:"Wer sind die Kunden?", el:[
+        {n:"Kundensegmente", t:"Zwei Gruppen: kleine und mittlere Unternehmen (SMB, 527 Mio. € Umsatz 2025) und Großkunden (Enterprise, 240 Mio. €), dazu Behörden, v. a. in den USA. Größter Markt ist EMEA mit 402 Mio. € Umsatz 2025.", q:"Q1, Q4"},
+        {n:"Kundenkanäle", t:"Online-Shop und Inside Sales für SMB, Direktvertrieb für Enterprise, dazu Reseller und Managed Service Provider (eigenes Partnerprogramm seit 2025).", q:"Q6"},
+        {n:"Kundenbeziehungen", t:"Laufende Abonnements mit Verlängerung; Enterprise-NRR lag in Q3 2026 bei 93 %. Nach Preis- und Monetarisierungsmaßnahmen stieg die SMB-Abwanderung, die Maßnahmen wurden ausgesetzt.", q:"Q1, Q2"}
+      ]},
+      {id:"nutzen", titel:"Nutzen", wer:"Was wird angeboten?", el:[
+        {n:"Leistungen", t:"Fernzugriff und Fernsupport (Remote), Enterprise-Plattform Tensor, Arbeitsplatz-Plattform TeamViewer ONE, DEX (Digital Employee Experience, aus 1E), Assist AR für die Industrie, KI-Agent Tia.", q:"Q1, Q6"},
+        {n:"Nutzen", t:"IT-Probleme lösen, ohne vor Ort zu sein: weniger Reisen und Ausfallzeiten, schnellere Hilfe. Zunehmend erkennt und behebt die Software Probleme selbst, bevor Mitarbeitende sie bemerken.", q:"Q6, Q7"}
+      ]},
+      {id:"wert", titel:"Wertschöpfung", wer:"Wie wird die Leistung erbracht?", el:[
+        {n:"Ressourcen", t:"Software-Plattform und globale Verbindungsinfrastruktur, bekannte Marke, rund 1.925 Mitarbeitende, Nutzungsdaten aus Millionen Support-Sitzungen.", q:"Q6, Q8"},
+        {n:"Fähigkeiten", t:"Sichere Fernverbindungen, Endgeräte-Analyse (DEX), KI-Funktionen: 4,6 Mio. automatisierte Session Insights in Q3 2026 (+64 %).", q:"Q2"},
+        {n:"Prozesse", t:"Software-Entwicklung, digitaler Vertrieb und Verlängerung von Abos, Enterprise-Vertrieb mit langen Abschlusszyklen (CEO: Pipeline-Konversion zu langsam).", q:"Q9"}
+      ]},
+      {id:"partner", titel:"Partner", wer:"Mit wem?", wide:true, el:[
+        {n:"Partner", t:"Technologie: Microsoft (Intune, Ignite), ServiceNow (strategische Partnerschaft 2026), Salesforce Agentforce; Vertrieb: Reseller und Managed Service Provider; Referenzkunde Mercedes-AMG PETRONAS F1 Team.", q:"Q6"},
+        {n:"Partnerkanäle und -beziehungen", t:"Integrationen in die Plattformen der Partner (TeamViewer-Technik wird Teil der KI-Plattform von ServiceNow) und Partnerprogramme mit Schulung und Events, z. B. EMEA Partner Summit.", q:"Q6"}
+      ]},
+      {id:"finanzen", titel:"Finanzen", wer:"Wie wird Geld verdient?", wide:true, el:[
+        {n:"Umsätze", t:"Fast nur wiederkehrende Abo-Umsätze. Q3 2026: 184,5 Mio. € (−2,2 % währungsbereinigt); Prognose 2026: −1 bis −2 % währungsbereinigt bei rund 43 % Marge.", q:"Q2, Q3"},
+        {n:"Kosten", t:"Vor allem Personal, Entwicklung, Vertrieb und Marketing; dazu Zinsen auf die Nettoverschuldung von 819 Mio. € nach dem Kauf von 1E.", q:"Q9, Q10"}
+      ]}
+    ],
+    staerke: "Sehr hohe Profitabilität und wachsendes Großkundengeschäft: Neugeschäft mit TeamViewer ONE und DEX hat sich in Q3 2026 gegenüber dem Vorjahr versechsfacht.",
+    staerkeQ: "Q2",
+    frage: "Gelingt die Rückkehr zu Wachstum, wenn das SMB-Geschäft schrumpft, US-Großaufträge sich verzögern und die Kundenbindung laut CEO zu niedrig ist?",
+    frageQ: "Q3, Q9"
+  },
+  reifegrad: {
+    branche: {produkt:"", kunde:"", gm:""},
+    elements: [
+      {id:"produkt", titel:"Produkt", hint:"Software als Produkt: Kriterien sinngemäß auf Endgeräte und Software übertragen.", crit:[
+        {n:"Überwachung", s:["Keine Überwachungsfunktion","Ein Aspekt wird überwacht, z. B. Ausfälle","Mehrere Aspekte, z. B. Betriebsdaten zur Fehlerdiagnose","Umfassend: Zustand, Umgebung, Betriebs- und Nutzungsparameter"], ist:4, soll:4, rel:1,
+          b:"DEX und TeamViewer ONE erfassen laufend Zustand, Leistung und Nutzung der Endgeräte; Tia Reporting wertet die Daten aus.", q:"Q6", a:false},
+        {n:"Steuerung, Personalisierung", s:["Keine Steuerungssoftware","Steuerung einer Funktion","Steuerung mehrerer Funktionen, eingeschränkte Personalisierung","Steuerung der meisten Funktionen, umfangreiche Personalisierung"], ist:4, soll:4, rel:1,
+          b:"Kernfunktion ist die vollständige Fernsteuerung von Rechnern, Mobilgeräten und Anlagen; Rollen und Richtlinien über Tensor und Microsoft Intune.", q:"Q6", a:false},
+        {n:"Optimierung", s:["Keine Optimierungsalgorithmen","Einzelne Leistungsparameter optimiert","Mehrzahl der Parameter optimiert","Zusätzlich Prognose von Defekten, Wartung und Impulse für Entwicklung"], ist:3, soll:4, rel:2,
+          b:"Automatisierte Behebung wiederkehrender Probleme über das Resolution Center (09/2026). Eine systematische Prognose von Ausfällen ist öffentlich nicht belegt, daher Stufe 3.", q:"Q6", a:false},
+        {n:"Autonomie", s:["Keine eigenständige Änderung","Reagiert punktuell selbst","Reagiert auf Basis umfassender Auswertung","Hohe Autonomie, Selbstdiagnose und Selbstreparatur"], ist:3, soll:4, rel:3,
+          b:"KI-Agent Tia (seit 11/2025) analysiert und behebt IT-Probleme eigenständig, IT-Fachkräfte behalten aber die Kontrolle. Autonomes Endgeräte-Management ist erst im Aufbau.", q:"Q6", a:false},
+        {n:"Vernetzung", s:["Keine digitale Vernetzung","Eingeschränkte Schnittstellen","Umfangreiche Schnittstellen","Mit dem Internet vernetzt, eindeutig identifizierbar"], ist:4, soll:4, rel:1,
+          b:"Das Produkt ist eine Internetverbindung zwischen Geräten; auch Industrieanlagen ohne lokale Installation (Agentless Access).", q:"Q6", a:false}
+      ]},
+      {id:"kunde", titel:"Kundenanbindung", hint:"Zwölf Kriterien entlang der vier Phasen im Kaufprozess.", crit:[
+        {n:"Produktentwicklung mit Kunden", p:"Phase 1 Entwicklung", s:["Kunde als Ideengeber, z. B. Befragung","Digitale Spuren und Einbindung bei Ideen und Tests","Integrierte Auswertung von Nutzungs- und Befragungsdaten","Kunden als Co-Designer und Tester"], ist:2, soll:3, rel:2,
+          b:"Ideen und Feedback über die Community; eine systematische Auswertung von Nutzungsdaten für die Entwicklung ist öffentlich nicht belegt.", q:"Annahme: community.teamviewer.com prüfen", a:true},
+        {n:"Kunden werben Kunden", p:"Phase 2 Vorverkauf", s:["Keine Integration","Digitale Bewertung der Produkte","Bewertung und gezielte Weiterempfehlung","Bestandskunden beraten Neukunden digital"], ist:2, soll:3, rel:1,
+          b:"Kunden bewerten TeamViewer auf Bewertungs- und Analystenportalen; ein Empfehlungsprogramm ist nicht belegt.", q:"Annahme: Gartner Peer Insights und G2 prüfen", a:true},
+        {n:"Nachfrageprognose", p:"Phase 2 Vorverkauf", s:["Keine Integration","Analyse von Kundendaten","Analyse plus Prognosen der Kunden","Gemeinsame Prognose mit Kunden"], ist:2, soll:3, rel:1,
+          b:"Prognose über Pipeline- und Nutzungsdaten; gemeinsame Planung mit Kunden ist für Software unüblich und nicht belegt.", q:"Annahme", a:true},
+        {n:"Informationskanäle", p:"Phase 3 Kauf", s:["Wenige Kanäle, Medienbrüche","Multi Channel ohne Abstimmung","Teilweise integriert","Cross Channel, alle Kanäle integriert"], ist:3, soll:4, rel:2,
+          b:"Website, Webinare, Partner, Inside Sales und Messen (z. B. Hannover Messe 2026); eine vollständige Integration aller Kanäle ist nicht belegt.", q:"Q6 + Annahme", a:true},
+        {n:"Auftragseingang", p:"Phase 3 Kauf", s:["Wenige Kanäle, Medienbrüche","Multi Channel, begrenzt integriert","Cross Channel, umfangreich integriert","Direkter Zugriff auf Systeme des Kunden"], ist:3, soll:4, rel:2,
+          b:"Bestellung über Online-Shop, Inside Sales, Reseller und MSP-Partner; Enterprise-Verträge werden einzeln verhandelt.", q:"Q6", a:false},
+        {n:"Bezahlsysteme", p:"Phase 3 Kauf", s:["Bar, Rechnung, Lastschrift","EC- und Kreditkarte","Payment-Service-Provider","Mobile Payment, QR-Code"], ist:3, soll:3, rel:1,
+          b:"Online-Kauf mit Karte und Online-Zahlarten, Enterprise per Rechnung. Für B2B-Software ist Stufe 4 kaum relevant.", q:"Annahme: Zahlarten im Online-Shop prüfen", a:true},
+        {n:"Customer Self Service", p:"Phase 3 Kauf", s:["Kein Self Service","Online über Plattform","Online und stationär","Breit und tief, mobil, Chatbots"], ist:3, soll:4, rel:2,
+          b:"Hilfe-Center, Wissensdatenbank und Kundenkonto online; ein KI-Chatbot für Kundenfragen ist nicht belegt.", q:"Annahme: support.teamviewer.com prüfen", a:true},
+        {n:"Kunden beraten Kunden", p:"Phase 3 Kauf", s:["Klassische Erfahrungsberichte","Internetforen","Online-Plattformen","Eigene Peer-to-Peer-Plattform"], ist:4, soll:4, rel:1,
+          b:"Eigene Community-Plattform, auf der Nutzer sich gegenseitig helfen.", q:"Annahme: community.teamviewer.com prüfen", a:true},
+        {n:"After Sales", p:"Phase 4 Nach dem Kauf", s:["Keine Integration","Online-Services, Statusinfos","Nutzungsdaten für präventive Services","Ferndiagnose, Online-Wartung und Updates"], ist:4, soll:4, rel:1,
+          b:"Updates, Wartung und Diagnose laufen online; Ferndiagnose ist das Produkt selbst.", q:"Q6", a:false},
+        {n:"Customer Journey", p:"Phasenübergreifend", s:["Isolierte, nicht-digitale Touch Points","Isolierte digitale Touch Points","Teilintegriert, Teilreisen voll digital","Durchgängig digital, automatisierte Entscheidungen"], ist:3, soll:4, rel:3,
+          b:"SMB kauft und verlängert online; Enterprise-Abschlüsse dauern lange. Der CEO nennt die Pipeline-Konversion zu langsam und die Kundenbindung zu niedrig (11/2026).", q:"Q9", a:false},
+        {n:"Verhaltensanalyse", p:"Phasenübergreifend", s:["Keine Datenanalyse","Isoliert aus ERP/CRM","Integriert aus mehreren Quellen","Automatische Individualisierung, Echtzeit"], ist:3, soll:4, rel:3,
+          b:"Nutzungsdaten werden für Monetarisierung genutzt; der Anstieg der SMB-Abwanderung nach diesen Maßnahmen zeigt, dass die Ansprache noch nicht individuell genug ist.", q:"Q1", a:false},
+        {n:"IT-Integration beim Kunden", p:"Phasenübergreifend", s:["Keine Integration","Einseitiger Datenaustausch","Bidirektional und regelmäßig","Direkter Zugriff, Cloud, SaaS"], ist:4, soll:4, rel:1,
+          b:"SaaS mit direktem Zugriff auf Endgeräte; Integrationen in Microsoft Intune, ServiceNow und Salesforce Agentforce.", q:"Q6", a:false}
+      ]},
+      {id:"gm", titel:"Geschäftsmodell", hint:"Fünf Kriterien zur Rolle der Digitalisierung im Gesamtmodell.", crit:[
+        {n:"Geschäftsidee", s:["Keine Bedeutung","Keine zentrale Rolle","Digitalisierung erweitert bestehendes Modell","Geschäftsidee beruht auf Digitalisierung"], ist:4, soll:4, rel:1,
+          b:"Die Idee (Kunden helfen, ohne hinzufahren) ist nur digital möglich; Ursprung 2005.", q:"Q7", a:false},
+        {n:"Leistungserstellung", s:["Keine Bedeutung","Effizienz der Leistungserstellung","Erweitertes Leistungsspektrum, hybrid","Kern der Leistung ist digital, konstituierend"], ist:4, soll:4, rel:1,
+          b:"Leistung ist Software im Abo; keine physischen Assets außer IT.", q:"Q1", a:false},
+        {n:"Interaktion mit Kunden", s:["Analog","Analog und digital","Überwiegend digital","Fast nur digital"], ist:4, soll:4, rel:2,
+          b:"SMB fast nur digital; im Enterprise-Geschäft gibt es persönlichen Vertrieb. Grenzfall zu Stufe 3.", q:"Q6 + Annahme", a:true},
+        {n:"Produkte und Dienstleistungen", s:["Analog","Analog","Analog oder teildigital, Produkt-Service","Digitale Produkte und Dienstleistungen"], ist:4, soll:4, rel:1,
+          b:"Ausschließlich digitale Produkte: Remote, Tensor, ONE, DEX, Assist AR, KI-Funktionen.", q:"Q1, Q6", a:false},
+        {n:"Ziele der Digitalisierung", s:["Prozesse einfacher machen","Effizienz einzelner Prozesse","Zusatznutzen, Wettbewerbsfähigkeit","Skalierbares, langfristig wettbewerbsfähiges Modell"], ist:4, soll:4, rel:1,
+          b:"Ziel ist ein skalierbares Abo-Modell mit hoher Marge (bereinigt 44,3 % in 2025).", q:"Q1", a:false}
+      ]}
+    ],
+    branchText: "Branche: Software für IT-Support und digitalen Arbeitsplatz, also Teil des am stärksten digitalisierten Sektors. Zum Vergleich: EU-weit erreichen 72 % der Unternehmen ein grundlegendes Digitalisierungsniveau; Deutschland liegt im Bitkom-DESI 2026 auf Platz 17 von 27 (Q13).\n\nWettbewerb (eigene Einordnung): Peers wie N-able, Ivanti, Nexthink, ConnectWise oder AnyDesk sind ebenfalls rein digital, beim Digitalisierungsgrad gibt es also kaum Abstand. TeamViewer wird im Gartner Magic Quadrant 2026 für DEX zum dritten Mal als Leader geführt (Q6).\n\nAussage: Der Wettbewerb entscheidet sich nicht am Grad der Digitalisierung, sondern an KI-Autonomie, Einbindung in fremde Plattformen und Kundenbindung. Risiko: Microsoft (Intune, Windows-Bordmittel) sowie ServiceNow und Salesforce besitzen die Kundenschnittstelle, TeamViewer liefert dort die Verbindungstechnik zu.",
+    perception: "",
+    leitfragen: [
+      {f:"Welche Geschäftsprozesse haben durch weitere Digitalisierung das höchste Potenzial für Effizienz?", a:"Enterprise-Vertrieb (Pipeline-Konversion laut CEO zu langsam) und Verlängerung im SMB-Geschäft: Abwanderung früh aus Nutzungsdaten erkennen und automatisch gegensteuern. Im eigenen Support Tia einsetzen."},
+      {f:"Welche ergänzenden Dienstleistungen lassen sich auf Basis der Digitalisierung anbieten?", a:"DEX-Add-on für SMB, Patch- und Sicherheitsmanagement, Managed Services über MSP-Partner, KI-Auswertungen wie Session Insights als Zusatzpaket."},
+      {f:"Welche Produkte können als Dienstleistung verkauft werden?", a:"Bereits vollständig im Abo. Nächster Schritt wäre eine Abrechnung nach Ergebnis, z. B. je von Tia gelöstem Ticket."},
+      {f:"Welcher Zusatznutzen entsteht durch eine digitale Kundenschnittstelle mit Konfiguration?", a:"Selbst konfigurierbare Pakete (Geräteanzahl, Module, KI-Kontingent) im Online-Shop senken Hürden für SMB und vermeiden Verkaufsgespräche bei kleinen Upgrades."},
+      {f:"Ist kundenindividuelle Fertigung (Losgröße 1) wirtschaftlich und gewünscht?", a:"Bei Software fast ohne Mehrkosten über Module und Konfiguration möglich; gewünscht vor allem von Enterprise und Behörden (z. B. US-Zertifizierungen)."},
+      {f:"Droht die Gefahr, durch einen Plattformanbieter in der Wertschöpfung nach hinten gedrängt zu werden?", a:"Ja. Wenn KI-Agenten in ServiceNow, Salesforce oder Microsoft die Probleme lösen, wird TeamViewer zur unsichtbaren Verbindungsschicht. Gegenmittel: eigene Plattform ONE und eigener Agent Tia."},
+      {f:"Welche Daten können gesammelt werden, und lassen sie sich kommerzialisieren?", a:"Metadaten von Support-Sitzungen, Zustandsdaten der Endgeräte (DEX), KI-Dokumentationen. Kommerzialisierung als anonymisierte Benchmarks für Kunden denkbar, begrenzt durch DSGVO und Vertrauen der Kunden."}
+    ]
+  },
+  muster: {
+    dreieck: {
+      wer: "Kleine und mittlere Unternehmen (SMB) weltweit, Großkunden und Behörden (Enterprise), IT-Abteilungen und Managed Service Provider; Privatnutzer kostenlos.",
+      was: "IT-Probleme lösen, ohne vor Ort zu sein: Fernzugriff und Fernsupport, Arbeitsplatz- und Endgeräte-Management (TeamViewer ONE, DEX), AR-Unterstützung für die Industrie, KI-Agent Tia.",
+      wie: "Eigene Software-Plattform mit globaler Verbindungsinfrastruktur; Online-Shop und Inside Sales für SMB, Direktvertrieb für Enterprise, Reseller und MSP; Integration in Microsoft, ServiceNow und Salesforce.",
+      wert: "Fast nur Abonnements, ergänzt um Zusatzpakete. 2025: 767,5 Mio. € Umsatz, 44,3 % bereinigte EBITDA-Marge. Kosten v. a. Personal, Entwicklung, Vertrieb und Zinsen."
+    },
+    dreieckQ: "Q1, Q6, Q14",
+    marked: {
+      "48":{s:"Kern", d:"Wert", b:"Fast alle Umsätze sind wiederkehrende Abo-Umsätze; der wiederkehrende Jahresumsatz (ARR) lag in Q3 2026 bei 736,9 Mio. €.", q:"Q1, Q2"},
+      "18":{s:"Kern", d:"Wer, Wert", b:"Private Nutzung ist kostenlos, gewerbliche Nutzung braucht eine Lizenz. Gratisnutzer machen die Marke bekannt und werden im Beruf zu zahlenden Kunden.", q:"Q14, Q7"},
+      "57":{s:"Kern", d:"Was", b:"Der Einsatz vor Ort wird durch virtuelle Anwesenheit ersetzt: Fernzugriff auf Rechner und Anlagen, Assist AR für Techniker. Das ist der Kern des Nutzens seit 2005.", q:"Q6, Q7"},
+      "1":{s:"Ergänzend", d:"Wert", b:"Zusatzpakete auf die Remote-Lizenz, z. B. Assist AR und KI-Funktionen wie Session Insights; die KI-Auswertungen wuchsen in Q3 2026 um 64 %.", q:"Q2, Q6"},
+      "47":{s:"Ergänzend", d:"Was", b:"TeamViewer ONE bündelt Fernsupport, DEX und Endgeräte-Management in einer Plattform: Lösung aus einer Hand statt Einzelprodukt.", q:"Q6"},
+      "24":{s:"Ergänzend", d:"Wie", b:"Spezialist für die Verbindungsschicht, die andere Plattformen nutzen: Integration in Microsoft Intune, ServiceNow (Technik wird Teil der KI-Plattform) und Salesforce Agentforce.", q:"Q6"},
+      "25":{s:"Ergänzend", d:"Wie, Wert", b:"Nutzungsdaten werden für Monetarisierung genutzt; 4,6 Mio. automatisierte Session Insights in Q3 2026.", q:"Q1, Q2"},
+      "56":{s:"Ergänzend", d:"Was", b:"DEX misst laufend Zustand und Leistung der Endgeräte (Software als Sensor) und verkauft die Auswertung als Dienst. Übertragung des Musters auf Software ist eigene Einordnung.", q:"Q6 + Annahme"},
+      "13":{s:"Ergänzend", d:"Wie", b:"SMB-Kunden kaufen, verlängern und erweitern Lizenzen im Online-Shop.", q:"Q6"},
+      "45":{s:"Ergänzend", d:"Wie", b:"Kunden installieren und konfigurieren selbst, Hilfe über Wissensdatenbank und Community.", q:"Q6 + Annahme"},
+      "2":{s:"Ergänzend", d:"Wer, Wie", b:"Reseller und Managed Service Provider verkaufen über ein Partnerprogramm (seit 2025) und werden am Umsatz beteiligt.", q:"Q6 + Annahme"},
+      "27":{s:"Ergänzend", d:"Wert", b:"Agenten auf den Endgeräten und Integration in IT-Abläufe erhöhen die Wechselkosten. Öffentlich nicht beziffert.", q:"Annahme"}
+    },
+    weights: {n:35, m:25, e:25, r:15},
+    ideas: [
+      {id:"A", t:"Tia Basis gratis, Tia Pro als Zusatzpaket", ki:"KI-Agent Tia", muster:"18 Freemium + 1 Add-on", meth:"Ähnlichkeit",
+       ds:"Jede SMB-Lizenz enthält ein kleines Kontingent Tia (Analyse und Lösungsvorschlag). Wer mehr will, bucht Tia Pro mit eigenständiger Behebung per Klick im Online-Shop. Vorbild: Copilot Chat in vielen Microsoft-Plänen kostenlos, Copilot als Zusatzlizenz.",
+       sc:{n:4,m:4,e:4,r:3}, amp:"gelb", rk:"AI Act: voraussichtlich kein Hochrisiko-Fall, Transparenz prüfen. DSGVO: Sitzungsinhalte können personenbezogen sein. Kosten der Gratisstufe für Rechenleistung. Kannibalisierung bestehender KI-Pakete.",
+       nach:{wer:"Unverändert, Fokus auf SMB-Bestandskunden mit Abwanderungsrisiko.", was:"Jede Lizenz liefert KI-Hilfe ab dem ersten Tag; Tia Pro behebt Standardprobleme selbst.", wie:"KI-Kontingent im Produkt; Upgrade im Shop per Klick; Nutzungsdaten zeigen, wann ein Upgrade passt.", wert:"Zusatzerlös je Lizenz und Monat für Tia Pro; neue Kosten für KI-Rechenleistung in der Gratisstufe."},
+       bmc:{vp:"KI-Hilfe in jeder Lizenz", cr:"Einstieg gratis, Upgrade im Produkt", re:"Tia Pro als Add-on-Abo", co:"KI-Rechenkosten Gratisstufe"},
+       kanni:"Kunden, die heute KI-Funktionen kaufen, könnten mit der Gratisstufe auskommen. Absichern: Kontingent klein halten und erst in einem Markt testen.",
+       emp:{lage:"Idee A hat bei der Bewertung (Stand 03.11.2026) am besten abgeschnitten: Nutzen, Machbarkeit und Erlöse je 4 Punkte. Sie setzt an der größten Lücke aus Baustein 2 an, der Verhaltensanalyse und Kundenbindung im SMB-Geschäft. Dort stieg die Abwanderung nach den letzten Preismaßnahmen.",
+            mass:"TeamViewer nimmt eine Basisstufe von Tia in alle SMB-Lizenzen auf und verkauft Tia Pro als Zusatzpaket im Online-Shop. Verantwortlich ist das Produktmanagement SMB gemeinsam mit Pricing und E-Commerce. Pilot in einem EMEA-Markt ab Q2 2027, Entscheidung über den Rollout nach sechs Monaten.",
+            herl:"TeamViewer nutzt Freemium bereits bei Privatnutzern und verdient fast nur mit Abos. Die Kombination aus Freemium und Add-on überträgt dieses Muster auf KI, ähnlich wie Microsoft mit Copilot Chat und der Zusatzlizenz. Kunden erleben den Nutzen, bevor sie zahlen; das senkt die Hürde, die zuletzt zu Abwanderung führte.",
+            quelle:"Gassmann, Frankenberger und Csik: Muster 1 Add-on und 18 Freemium, Basisstrategie Kombinieren. Osterwalder und Pigneur (2011) für die Darstellung im Canvas.",
+            wirk:"Anteil der SMB-Kunden, die Tia nutzen; Umwandlungsrate von Basis zu Pro (Zielwert vor dem Pilot festlegen); Verlängerungsquote im Pilotmarkt gegenüber einem Vergleichsmarkt; ARR aus Tia Pro.",
+            risk:"Rechenkosten der Gratisstufe, Kannibalisierung bestehender Zusatzpakete, DSGVO bei der Auswertung von Sitzungsdaten, Transparenzpflichten nach AI Act. Ampel gelb: mit begrenztem Kontingent und Pilot absichern."}},
+      {id:"B", t:"Tia rechnet je gelöstem Ticket ab", ki:"KI-Agent Tia, Session Insights", muster:"38 Performance-Based Contracting", meth:"Konfrontation",
+       ds:"Großkunden und MSPs zahlen zusätzlich zum Basisabo einen festen Betrag je Standard-Ticket, das Tia ohne Eskalation löst. Vorbild aus einer fremden Branche: Fin (früher Intercom) mit 0,99 USD je gelöster Kundenanfrage.",
+       sc:{n:5,m:3,e:4,r:2}, amp:"gelb", rk:"AI Act: Agent greift selbst ein, also Protokollierung und menschliche Aufsicht sicherstellen. Definition „gelöst“ vertraglich klären. Erlöse schwanken. Abhängigkeit von ServiceNow-Daten.",
+       nach:{wer:"Enterprise-IT und MSPs mit hohem Ticketvolumen.", was:"Garantierte Bearbeitung von Standard-Tickets: Kunde kauft Ergebnisse statt Software.", wie:"Messung der gelösten Tickets über Session Insights und die ServiceNow-Integration; gemeinsame Definition von „gelöst“.", wert:"Preis je gelöstem Ticket zusätzlich zum Basisabo; Erlöse steigen mit Volumen, schwanken aber."},
+       bmc:{vp:"Ergebnis statt Lizenz", kp:"ServiceNow als Datenquelle für die Messung", ka:"Tickets messen und abrechnen", re:"Preis je gelöstem Ticket"},
+       kanni:"Wenn Tia Arbeit übernimmt, brauchen Kunden weniger Lizenzen für Support-Mitarbeitende. Neue Erlöse kommen erst mit Volumen: Cashflow-Lücke am Anfang.",
+       emp:{lage:"Idee B liegt knapp hinter A und hat den höchsten Nutzen (5 Punkte). Großkunden wollen Ergebnisse statt Lizenzen, während ServiceNow und Salesforce eigene KI-Agenten anbieten. Die Lücke „Autonomie“ aus Baustein 2 (Ist 3, Soll 4) passt dazu.",
+            mass:"TeamViewer bietet Enterprise-Kunden und MSPs ein Zusatzmodell an, bei dem Tia je gelöstem Standard-Ticket abgerechnet wird. Verantwortlich sind das Enterprise-Produktmanagement und das Partner-Team für ServiceNow. Pilot mit drei bis fünf Bestandskunden ab Q3 2027.",
+            herl:"Abrechnung nach Ergebnis überträgt die Logik von Fin auf den IT-Support (Konfrontationsprinzip). TeamViewer kann Ergebnisse über Session Insights und die ServiceNow-Integration messen. Das Muster wirkt der Gefahr entgegen, in fremden Plattformen nur noch die unsichtbare Verbindungsschicht zu sein.",
+            quelle:"Gassmann, Frankenberger und Csik: Muster 38 Performance-Based Contracting, Basisstrategie Übertragen. Christensen (1997) zur Kannibalisierung, Kursfolien Termin 3 zu Preismodellen für KI.",
+            wirk:"Gelöste Tickets je Kunde und Monat, Lösungsquote ohne Eskalation, Erlös je Pilotkunde gegenüber reinem Abo, Net Revenue Retention im Enterprise-Geschäft (Q3 2026: 93 %).",
+            risk:"Schwankende Erlöse, unklare Definition von „gelöst“, Kannibalisierung bei Lizenzen für Support-Mitarbeitende, Pflichten nach AI Act bei autonomen Eingriffen, Abhängigkeit von ServiceNow. Ampel gelb."}},
+      {id:"C", t:"KI-Frühwarnung gegen Abwanderung mit Treueangebot", ki:"Verhaltensanalyse aus Nutzungsdaten", muster:"25 Leverage Customer Data + 10 Customer Loyalty", meth:"Ähnlichkeit",
+       ds:"Ein Modell erkennt aus Nutzung und Vertrag, welche SMB-Kunden abspringen könnten, und löst passende Angebote aus: Nutzungstipps, Paketwechsel oder Treuerabatt. Vorbild: Abwanderungsmodelle bei Telekom- und Streaming-Anbietern.",
+       sc:{n:4,m:4,e:3,r:3}, amp:"gelb", rk:"DSGVO: Profiling transparent machen und Widerspruch ermöglichen. Erlöswirkung indirekt über gehaltene Kunden.",
+       nach:{wer:"SMB-Bestandskunden mit Abwanderungsrisiko.", was:"Individuelle Angebote statt einheitlicher Preisänderungen.", wie:"KI-Modell aus Nutzungs- und Vertragsdaten, automatische Ansprache im Produkt und per E-Mail.", wert:""},
+       bmc:{cr:"Individuelle Ansprache vor der Verlängerung", ka:"Abwanderungsmodell betreiben", kr:"Integrierte Kundendaten"},
+       kanni:"Treuerabatte senken den Erlös je Kunde; nur gezielt einsetzen.", emp:{}},
+      {id:"D", t:"Anonymisierte DEX-Benchmarks als Datenprodukt", ki:"DEX-Analyse, Tia Reporting", muster:"25 Leverage Customer Data + 56 Sensor as a Service", meth:"Konfrontation",
+       ds:"Kunden sehen, wie ihre Geräte und IT-Abläufe im Vergleich zu ähnlichen Unternehmen abschneiden, und können den Bericht als Zusatz buchen. Frage: Wie würde ein Marktforschungsinstitut unser Geschäft führen?",
+       sc:{n:3,m:3,e:3,r:2}, amp:"rot", rk:"Vertrauen der Kunden und DSGVO kritisch; Geschäftsgeheimnisse aus Gerätedaten. Alternative: Benchmark nur mit ausdrücklicher Zustimmung oder nur im eigenen Mandanten.",
+       nach:{wer:"IT-Leitungen von Enterprise-Kunden.", was:"Vergleichswerte zur eigenen IT-Leistung.", wie:"Anonymisierte Auswertung über alle zustimmenden Kunden.", wert:"Zusatzpaket „Benchmark“."},
+       bmc:{vp:"Vergleich mit ähnlichen Firmen", re:"Benchmark-Paket"}, kanni:"", emp:{}},
+      {id:"E", t:"Marktplatz für Automatisierungen von MSPs", ki:"Resolution Center, Tia", muster:"52 Two-Sided Market + 41 Revenue Sharing", meth:"Konfrontation",
+       ds:"MSPs und Partner stellen geprüfte Automatisierungen für typische IT-Probleme in einen Marktplatz; TeamViewer erhält einen Anteil am Verkauf. Vorbild: App-Stores.",
+       sc:{n:3,m:2,e:3,r:3}, amp:"gelb", rk:"Qualität und Sicherheit fremder Skripte, Haftung bei Fehlern. Aufbau einer kritischen Masse dauert.",
+       nach:{wer:"Zusätzlich MSPs als Anbieter.", was:"Fertige Lösungen aus der Community.", wie:"Marktplatz mit Prüfung und Freigabe.", wert:"Provision je verkaufter Automatisierung."},
+       bmc:{kp:"MSPs als Anbieter", ch:"Marktplatz", re:"Provision"}, kanni:"", emp:{}},
+      {id:"F", t:"Assist AR mit KI je Experteneinsatz", ki:"Assist AR, KI-Bilderkennung", muster:"35 Pay per Use + 57 Virtualisation", meth:"Ähnlichkeit",
+       ds:"Industriekunden zahlen je Fern-Einsatz eines Experten mit AR-Brille statt einer festen Lizenz; KI erkennt Bauteile und schlägt Schritte vor. Ähnlichkeitsprinzip: Abrechnung je Leistung wie im Holcim-Beispiel aus Termin 3.",
+       sc:{n:3,m:3,e:3,r:3}, amp:"gelb", rk:"Data Act bei vernetzten Industrieprodukten, Kameradaten am Arbeitsplatz (Betriebsrat, DSGVO).",
+       nach:{wer:"Industrie und Maschinenbau mit seltenen Einsätzen.", was:"Experte virtuell vor Ort, nur bei Bedarf.", wie:"Abrechnung je Einsatz.", wert:"Pay per Use statt Lizenz."},
+       bmc:{re:"Preis je Einsatz", cs:"Gelegenheitsnutzer in der Industrie"}, kanni:"", emp:{}},
+      {id:"G", t:"Tia als White-Label-Agent in Partner-Plattformen", ki:"KI-Agent Tia", muster:"55 White Label + 24 Layer Player", meth:"Ähnlichkeit",
+       ds:"ServiceNow, Salesforce oder MSPs bieten den Agenten unter eigener Marke an; TeamViewer liefert Technik und erhält nutzungsabhängige Gebühren. Vorbild: Zahlungs- und Kommunikationsdienste, die in fremden Apps laufen.",
+       sc:{n:4,m:3,e:4,r:2}, amp:"gelb", rk:"Eigene Marke wird unsichtbar, Abhängigkeit von wenigen Plattformen, Preisdruck.",
+       nach:{wer:"Plattformanbieter und große MSPs.", was:"KI-Agent als Baustein für fremde Produkte.", wie:"Programmierschnittstellen, Partnerverträge.", wert:"Gebühr je Nutzung über Partner."},
+       bmc:{kp:"Plattformen als Vertriebspartner", ch:"Fremde Plattformen", re:"Nutzungsgebühren über Partner"}, kanni:"", emp:{}}
+    ],
+    uebung: [
+      {n:"57 Virtualisation", m:"Ein bisher physischer Vorgang wird virtuell nachgebildet, z. B. Anwesenheit, Arbeitsplatz oder Infrastruktur.", a:"Kosten für Reisen und Hardware fallen weg; Leistung ist sofort und weltweit verfügbar.", b:"TeamViewer (Fernzugriff statt Einsatz vor Ort), Cloud-Speicher, virtuelle Desktops.", r:"Hoch: Grundlage fast jedes digitalen Dienstes und Kern des Nutzens von TeamViewer."},
+      {n:"56 Sensor as a Service", m:"Messdaten werden nicht mit dem Gerät verkauft, sondern als laufender Dienst mit Auswertung.", a:"Erlös entsteht aus Daten und Analyse, nicht aus Hardware; passt zu Abo und Pay per Use.", b:"Vorausschauende Wartung von Maschinen; bei TeamViewer DEX mit Zustandsdaten der Endgeräte (eigene Einordnung).", r:"Hoch: Daten sind der Rohstoff für KI-Funktionen und neue Erlösmodelle."}
+    ],
+    showOnly: false
+  }
+
+};
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+var state;
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var p = JSON.parse(raw); if(p && p.v === VERSION){ if(!p.muster) p.muster = clone(DEFAULT.muster); return p; } }
+  }catch(e){}
+  return clone(DEFAULT);
+}
+var saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }, 250);
+}
+state = load();
+
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function srcChips(q){
+  if(!q) return '<span class="src assume">ohne Beleg</span>';
+  var parts = String(q).split(/,\s*|\s\+\s/);
+  var out = "";
+  var isAssume = /annahme/i.test(q);
+  parts.forEach(function(p){
+    p = p.trim();
+    if(SOURCES[p]) out += '<a class="src" href="#src-'+p+'" title="'+esc(SOURCES[p].t)+'">'+p+'</a>';
+  });
+  if(isAssume) out += '<span class="src assume">'+esc(String(q).replace(/^.*?(Annahme)/i,"Annahme"))+'</span>';
+  if(!out) out = '<span class="src">'+esc(q)+'</span>';
+  return out;
+}
+function fmt(n){return n.toFixed(1).replace(".",",");}
+
+/* ---------- Baustein 1 ---------- */
+var editMode = false;
+function renderSteckbrief(){
+  var s = state.steckbrief, h = "";
+  h += '<div class="lede">';
+  if(editMode){
+    h += '<label class="note" for="f-satz">Unternehmen in einem Satz</label><textarea class="edit-field" id="f-satz" data-path="satz" rows="2">'+esc(s.satz)+'</textarea>';
+  } else {
+    h += '<p class="sentence">'+esc(s.satz)+' '+srcChips(s.satzQ)+'</p>';
+  }
+  h += '<div class="facts">';
+  s.facts.forEach(function(f,i){
+    if(editMode){
+      h += '<div class="fact"><input class="edit-field" data-fact="'+i+'" data-k="v" value="'+esc(f.v)+'" aria-label="Kennzahl"><input class="edit-field" data-fact="'+i+'" data-k="l" value="'+esc(f.l)+'" aria-label="Beschriftung" style="margin-top:4px"><input class="edit-field" data-fact="'+i+'" data-k="q" value="'+esc(f.q)+'" aria-label="Quelle" style="margin-top:4px"></div>';
+    } else {
+      h += '<div class="fact"><div class="v">'+esc(f.v)+'</div><div class="l">'+esc(f.l)+' '+srcChips(f.q)+'</div></div>';
+    }
+  });
+  h += '</div></div>';
+
+  h += '<div class="dims">';
+  s.dims.forEach(function(d,di){
+    h += '<article class="dim'+(d.wide?' wide':'')+'"><h2>'+esc(d.titel)+' <small>'+esc(d.wer)+'</small></h2>';
+    d.el.forEach(function(e,ei){
+      h += '<div class="el"><h3>'+esc(e.n)+'</h3>';
+      if(editMode){
+        h += '<textarea data-dim="'+di+'" data-el="'+ei+'" data-k="t" rows="4" aria-label="'+esc(e.n)+'">'+esc(e.t)+'</textarea>';
+        h += '<label>Quelle<input data-dim="'+di+'" data-el="'+ei+'" data-k="q" value="'+esc(e.q)+'"></label>';
+      } else {
+        h += '<p>'+esc(e.t)+' '+srcChips(e.q)+'</p>';
+      }
+      h += '</div>';
+    });
+    h += '</article>';
+  });
+  h += '</div>';
+
+  h += '<div class="checkin"><div class="box"><h3>Stärke</h3>';
+  h += editMode ? '<textarea class="edit-field" data-path="staerke" rows="3">'+esc(s.staerke)+'</textarea>' : '<p style="margin:0">'+esc(s.staerke)+' '+srcChips(s.staerkeQ)+'</p>';
+  h += '</div><div class="box"><h3>Offene Frage</h3>';
+  h += editMode ? '<textarea class="edit-field" data-path="frage" rows="3">'+esc(s.frage)+'</textarea>' : '<p style="margin:0">'+esc(s.frage)+' '+srcChips(s.frageQ)+'</p>';
+  h += '</div></div>';
+
+  var root = document.getElementById("steckbriefRoot");
+  root.innerHTML = h;
+  if(editMode){
+    root.querySelectorAll("textarea,input").forEach(function(el){
+      el.addEventListener("input", function(){
+        var v = el.value;
+        if(el.dataset.path){ s[el.dataset.path] = v; }
+        else if(el.dataset.fact){ s.facts[+el.dataset.fact][el.dataset.k] = v; }
+        else { s.dims[+el.dataset.dim].el[+el.dataset.el][el.dataset.k] = v; }
+        save();
+      });
+    });
+  }
+}
+document.getElementById("editBtn").addEventListener("click", function(){
+  editMode = !editMode;
+  this.textContent = editMode ? "Bearbeitung beenden" : "Steckbrief bearbeiten";
+  renderSteckbrief();
+});
+
+/* ---------- Radar ---------- */
+function radar(labels, series, opts){
+  opts = opts || {};
+  var size = opts.size || 320, pad = opts.pad || 70, max = 4, padX = opts.padX || pad;
+  var W = size + padX*2, H = size + pad*2 - (labels.length===3 ? 50 : 0);
+  var cx = W/2, cy = pad + size/2 + (labels.length===3 ? 10 : 0), r = size/2;
+  var n = labels.length;
+  function pt(i, v){ var a = -Math.PI/2 + i*2*Math.PI/n; return [cx + Math.cos(a)*r*v/max, cy + Math.sin(a)*r*v/max]; }
+  var s = '<svg class="radar" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(opts.aria||"Netzdiagramm")+'" style="width:100%;height:auto;display:block">';
+  for(var g=1; g<=max; g++){
+    var poly = []; for(var i=0;i<n;i++){ poly.push(pt(i,g).join(",")); }
+    s += '<polygon class="grid" points="'+poly.join(" ")+'"/>';
+    var lp = pt(0,g); s += '<text class="ring-label" x="'+(lp[0]+4)+'" y="'+(lp[1]+3)+'">'+g+'</text>';
+  }
+  for(var j=0;j<n;j++){
+    var e = pt(j,max); s += '<line class="axis" x1="'+cx+'" y1="'+cy+'" x2="'+e[0]+'" y2="'+e[1]+'"/>';
+    var lpos = pt(j, max*1.13), anchor = Math.abs(lpos[0]-cx) < 8 ? "middle" : (lpos[0] > cx ? "start" : "end");
+    var words = String(labels[j]).split(" "), lines = [], cur = "";
+    words.forEach(function(w){ if((cur+" "+w).trim().length > 16){ lines.push(cur.trim()); cur = w; } else cur += " "+w; });
+    lines.push(cur.trim());
+    var dy = lpos[1] < cy - 5 ? -(lines.length-1)*13 : (lpos[1] > cy + 5 ? 4 : -(lines.length-1)*6.5);
+    s += '<text'+(opts.numbers?' style="font-size:15px;font-weight:700"':'')+' text-anchor="'+anchor+'" x="'+lpos[0]+'" y="'+(lpos[1]+dy)+'">';
+    lines.forEach(function(l,k){ s += '<tspan x="'+lpos[0]+'" dy="'+(k?13:0)+'">'+esc(l)+'</tspan>'; });
+    s += '</text>';
+  }
+  series.forEach(function(se){
+    if(se.values.some(function(v){return v==null || isNaN(v);})) return;
+    var poly = se.values.map(function(v,i){ return pt(i,v).join(","); });
+    s += '<polygon class="'+se.cls+'" points="'+poly.join(" ")+'"/>';
+    if(se.cls === "ist"){ se.values.forEach(function(v,i){ var p = pt(i,v); s += '<circle class="pt" r="3.5" cx="'+p[0]+'" cy="'+p[1]+'"/>'; }); }
+  });
+  return s + '</svg>';
+}
+
+/* ---------- Baustein 2 ---------- */
+var STUFEN = ["","analog","analog mit digitalen Prozessen","digital erweitert","digital"];
+function mean(arr, k){ return arr.reduce(function(a,c){return a + (+c[k]);},0) / arr.length; }
+
+function renderOverview(){
+  var els = state.reifegrad.elements, br = state.reifegrad.branche;
+  var ist = els.map(function(e){return mean(e.crit,"ist");});
+  var soll = els.map(function(e){return mean(e.crit,"soll");});
+  var brVals = els.map(function(e){ var v = parseFloat(String(br[e.id]).replace(",",".")); return (v>=1 && v<=4) ? v : null; });
+  var series = [{values:soll, cls:"soll"},{values:ist, cls:"ist"}];
+  var hasBr = brVals.every(function(v){return v!=null;});
+  if(hasBr) series.unshift({values:brVals, cls:"br"});
+  document.getElementById("brLegend").hidden = !hasBr;
+  document.getElementById("radarOverview").innerHTML = radar(els.map(function(e){return e.titel;}), series, {size:260, pad:60, padX:110, aria:"Reifegrad Ist und Soll je Element"});
+
+  var t = '<thead><tr><th>Element</th><th>Ist</th><th>Soll</th><th>Lücke</th><th>Branche</th></tr></thead><tbody>';
+  els.forEach(function(e,i){
+    t += '<tr><td>'+esc(e.titel)+'<br><span class="stage-word">Grad '+Math.round(ist[i])+': '+STUFEN[Math.round(ist[i])]+'</span></td><td>'+fmt(ist[i])+'</td><td>'+fmt(soll[i])+'</td><td>'+fmt(soll[i]-ist[i])+'</td>';
+    t += '<td><input inputmode="decimal" data-br="'+e.id+'" value="'+esc(br[e.id])+'" aria-label="Branchenwert '+esc(e.titel)+'" placeholder="–"></td></tr>';
+  });
+  var all = [].concat.apply([], els.map(function(e){return e.crit;}));
+  t += '<tr><td><strong>Gesamt</strong></td><td><strong>'+fmt(mean(all,"ist"))+'</strong></td><td><strong>'+fmt(mean(all,"soll"))+'</strong></td><td><strong>'+fmt(mean(all,"soll")-mean(all,"ist"))+'</strong></td><td></td></tr></tbody>';
+  var tbl = document.getElementById("meansTable");
+  tbl.innerHTML = t;
+  tbl.querySelectorAll("input[data-br]").forEach(function(inp){
+    inp.addEventListener("change", function(){ br[inp.dataset.br] = inp.value.trim(); save(); renderOverview(); });
+  });
+
+  var list = [];
+  els.forEach(function(e){ e.crit.forEach(function(c,ci){ var gap = c.soll - c.ist; if(gap>0) list.push({e:e, c:c, i:ci, gap:gap, score:gap*c.rel}); }); });
+  list.sort(function(a,b){ return b.score - a.score || a.c.ist - b.c.ist; });
+  var gl = document.getElementById("gapList");
+  if(!list.length){ gl.innerHTML = '<li><div><strong>Keine Lücken</strong><span>Alle Soll-Werte sind erreicht. Prüft, ob die Soll-Werte ehrgeizig genug sind.</span></div></li>'; return; }
+  gl.innerHTML = list.slice(0,3).map(function(x){
+    return '<li><div><strong>'+esc(x.c.n)+' ('+esc(x.e.titel)+')</strong><span>Ist '+x.c.ist+', Soll '+x.c.soll+', Relevanz '+["","niedrig","mittel","hoch"][x.c.rel]+'. '+esc(x.c.b)+'</span></div></li>';
+  }).join("");
+}
+
+function renderElements(){
+  var root = document.getElementById("elementsRoot"), h = "";
+  state.reifegrad.elements.forEach(function(e, ei){
+    h += '<section class="elem" id="el-'+e.id+'"><div class="elem-head"><h2>'+esc(e.titel)+'</h2><span class="m" id="m-'+e.id+'"></span></div>';
+    h += '<div class="elem-body"><div class="elem-chart"><div id="chart-'+e.id+'"></div><div class="legend"><span><i></i>Ist</span><span><i class="soll"></i>Soll</span></div><p class="note" style="margin:6px 0 0">'+esc(e.hint)+' Die Nummern im Diagramm entsprechen den Kriterien rechts.</p></div><div>';
+    e.crit.forEach(function(c, ci){
+      var id = e.id+"-"+ci;
+      h += '<div class="crit" data-e="'+ei+'" data-c="'+ci+'">';
+      h += '<h3><span class="nr">'+(ci+1)+'</span>'+esc(c.n)+(c.p?' <span class="phase">'+esc(c.p)+'</span>':'')+(c.a?' <span class="badge-assume">Annahme</span>':'')+'</h3>';
+      h += '<div class="scale" aria-hidden="true">';
+      c.s.forEach(function(txt, si){ h += '<div data-stufe="'+(si+1)+'"><b>Stufe '+(si+1)+'</b>'+esc(txt)+'</div>'; });
+      h += '</div>';
+      h += '<div class="why"><label for="b-'+id+'">Begründung</label><textarea id="b-'+id+'" data-k="b">'+esc(c.b)+'</textarea><label for="q-'+id+'">Quelle</label><input id="q-'+id+'" data-k="q" value="'+esc(c.q)+'"></div>';
+      h += '<div class="ctrl">';
+      h += '<div><label for="i-'+id+'">Ist</label><select id="i-'+id+'" data-k="ist">'+[1,2,3,4].map(function(v){return '<option'+(v===c.ist?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>';
+      h += '<div><label for="s-'+id+'">Soll</label><select id="s-'+id+'" data-k="soll">'+[1,2,3,4].map(function(v){return '<option'+(v===c.soll?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>';
+      h += '<div class="full"><label for="r-'+id+'">Relevanz für das Geschäftsmodell</label><select id="r-'+id+'" data-k="rel">'+[[1,"niedrig"],[2,"mittel"],[3,"hoch"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===c.rel?' selected':'')+'>'+o[1]+'</option>';}).join("")+'</select></div>';
+      h += '<label class="chk full"><input type="checkbox" data-k="a"'+(c.a?' checked':'')+'> Als Annahme markiert</label>';
+      h += '</div></div>';
+    });
+    h += '</div></div></section>';
+  });
+  root.innerHTML = h;
+
+  root.querySelectorAll(".crit").forEach(function(box){
+    var c = state.reifegrad.elements[+box.dataset.e].crit[+box.dataset.c];
+    box.querySelectorAll("[data-k]").forEach(function(inp){
+      var k = inp.dataset.k;
+      var evt = (inp.tagName === "SELECT" || inp.type === "checkbox") ? "change" : "input";
+      inp.addEventListener(evt, function(){
+        if(k === "a"){ c.a = inp.checked; var h3 = box.querySelector("h3"); var b = h3.querySelector(".badge-assume"); if(c.a && !b){ h3.insertAdjacentHTML("beforeend",' <span class="badge-assume">Annahme</span>'); } else if(!c.a && b){ b.remove(); } }
+        else if(k === "ist" || k === "soll" || k === "rel"){ c[k] = +inp.value; updateCrit(box, c); updateCharts(); renderOverview(); }
+        else { c[k] = inp.value; if(k==="b") renderOverview(); }
+        save();
+      });
+    });
+    updateCrit(box, c);
+  });
+  updateCharts();
+}
+function updateCrit(box, c){
+  box.querySelectorAll(".scale div").forEach(function(d){
+    var st = +d.dataset.stufe;
+    d.classList.toggle("is-ist", st === c.ist);
+    d.classList.toggle("is-soll", st === c.soll);
+  });
+}
+function updateCharts(){
+  state.reifegrad.elements.forEach(function(e){
+    var labels = e.crit.map(function(c,i){return i+1;});
+    document.getElementById("chart-"+e.id).innerHTML = radar(labels, [{values:e.crit.map(function(c){return c.soll;}), cls:"soll"},{values:e.crit.map(function(c){return c.ist;}), cls:"ist"}], {size:260, pad:34, numbers:true, aria:"Netzdiagramm "+e.titel+", Nummern wie in der Kriterienliste"});
+    document.getElementById("m-"+e.id).textContent = "Mittelwert Ist "+fmt(mean(e.crit,"ist"))+" · Soll "+fmt(mean(e.crit,"soll"));
+  });
+}
+
+function renderTexts(){
+  var rg = state.reifegrad;
+  var bt = document.getElementById("branchText"); bt.value = rg.branchText;
+  bt.oninput = function(){ rg.branchText = bt.value; save(); };
+  document.getElementById("branchSrc").innerHTML = "Belege: "+srcChips("Q13, Q6")+" Peer-Gruppe und Plattformrisiko sind eigene Einordnung.";
+  var pt = document.getElementById("perceptionText"); pt.value = rg.perception;
+  pt.oninput = function(){ rg.perception = pt.value; save(); };
+  var lf = document.getElementById("leitfragen");
+  lf.innerHTML = rg.leitfragen.map(function(x,i){ return '<li><strong>'+esc(x.f)+'</strong><textarea data-lf="'+i+'" aria-label="Antwort auf Leitfrage '+(i+1)+'">'+esc(x.a)+'</textarea></li>'; }).join("");
+  lf.querySelectorAll("textarea").forEach(function(ta){ ta.addEventListener("input", function(){ rg.leitfragen[+ta.dataset.lf].a = ta.value; save(); }); });
+}
+
+function renderSources(){
+  document.getElementById("sourceList").innerHTML = Object.keys(SOURCES).map(function(k){
+    var s = SOURCES[k];
+    return '<li id="src-'+k+'"><b>'+k+'</b><span>'+esc(s.t)+(s.u?' – <a href="'+esc(s.u)+'" target="_blank" rel="noopener">Link</a>':'')+'</span></li>';
+  }).join("");
+}
+
+
+/* ---------- Baustein 3 ---------- */
+var PATTERNS = [
+ ["Add-on","Basis günstig, Extras kosten extra"],["Affiliation","Partner verkaufen mit und werden beteiligt"],["Aikido","Stärke des Gegners umlenken"],["Auction","Preis entsteht durch Gebote"],["Barter","Tausch statt Geld"],["Cash Machine","Kunde zahlt, bevor Kosten anfallen"],
+ ["Cross-Selling","Zusatzprodukte aus anderen Bereichen"],["Crowdfunding","Finanzierung durch viele Unterstützer"],["Crowdsourcing","Aufgaben an die Masse auslagern"],["Customer Loyalty","Bindung durch Belohnung"],["Digitization","Analoges digital anbieten"],["Direct Selling","Verkauf ohne Zwischenhandel"],
+ ["E-Commerce","Verkauf über Online-Kanäle"],["Experience Selling","Erlebnis statt nur Produkt"],["Flat Rate","Pauschalpreis, unbegrenzte Nutzung"],["Fractional Ownership","Anteiliges Eigentum"],["Franchising","Konzept gegen Gebühr vervielfältigen"],["Freemium","Basis gratis, Premium kostet"],
+ ["From Push to Pull","Nachfrage steuert die Wertkette"],["Guaranteed Availability","Verfügbarkeit garantiert, Pauschale"],["Hidden Revenue","Dritte zahlen, z. B. Werbung"],["Ingredient Branding","Marke im Produkt eines anderen"],["Integrator","Große Teile der Wertkette selbst"],["Layer Player","Spezialist für eine Stufe, branchenübergreifend"],
+ ["Leverage Customer Data","Kundendaten mehrfach nutzen"],["License","Rechte an geistigem Eigentum vergeben"],["Lock-in","Hohe Wechselkosten binden"],["Long Tail","Viele Nischen statt weniger Bestseller"],["Make More of It","Eigenes Know-how extern verkaufen"],["Mass Customization","Individuell in Serie"],
+ ["No Frills","Grundleistung zum Tiefpreis"],["Open Business Model","Partner in die Wertschöpfung öffnen"],["Open Source","Offener Code, gemeinsame Entwicklung"],["Orchestrator","Wertkette koordinieren, andere ausführen lassen"],["Pay per Use","Bezahlt wird nach Nutzung"],["Pay What You Want","Kunde bestimmt den Preis"],
+ ["Peer to Peer","Privatpersonen handeln untereinander"],["Performance-Based Contracting","Bezahlung nach Ergebnis"],["Razor and Blade","Basis billig, Verbrauch teuer"],["Rent Instead of Buy","Mieten statt kaufen"],["Revenue Sharing","Erlöse mit Partnern teilen"],["Reverse Engineering","Nachbauen und günstiger anbieten"],
+ ["Reverse Innovation","Einfachlösungen aus Schwellenländern"],["Robin Hood","Reiche zahlen, Arme profitieren"],["Self-Service","Kunde übernimmt Teile der Leistung"],["Shop in Shop","Geschäft im Geschäft eines Partners"],["Solution Provider","Alles aus einer Hand"],["Subscription","Regelmäßige Gebühr für laufende Leistung"],
+ ["Supermarket","Breites Sortiment, niedrige Preise"],["Target the Poor","Angebot für geringe Einkommen"],["Trash to Cash","Abfall wird verkauft"],["Two-Sided Market","Plattform verbindet zwei Gruppen"],["Ultimate Luxury","Spitzenprodukt für das Top-Segment"],["User Design","Kunden entwerfen, Anbieter verkauft"],
+ ["White Label","Produkt unter fremder Marke"],["Sensor as a Service","Messdaten als laufender Dienst"],["Virtualisation","Physisches virtuell nachbilden"],["Object Self-Service","Gerät bestellt selbst"],["Object as Point of Sale","Gerät wird Verkaufsstelle"],["Prosumer","Kunde ist zugleich Produzent"]
+];
+var CRIT = [["n","Nutzen"],["m","Machbarkeit"],["e","Erlöse"],["r","Risiko"]];
+var AMP = {gruen:"grün", gelb:"gelb", rot:"rot"};
+var BMC = [
+ ["kp","Schlüsselpartner","Microsoft, ServiceNow, Salesforce; Reseller und MSPs"],
+ ["ka","Schlüsselaktivitäten","Software-Entwicklung, Betrieb der Verbindungen, Vertrieb und Verlängerung"],
+ ["kr","Schlüsselressourcen","Plattform, Marke, Nutzungsdaten, rund 1.925 Mitarbeitende"],
+ ["vp","Wertangebote","IT-Hilfe ohne Anfahrt, weniger Ausfallzeit, KI-gestützte Behebung"],
+ ["cr","Kundenbeziehungen","Abo mit Verlängerung, Self-Service, Community, Key Accounts"],
+ ["ch","Kanäle","Online-Shop, Inside Sales, Direktvertrieb, Partner"],
+ ["cs","Kundensegmente","SMB, Enterprise, Behörden; Privatnutzer kostenlos"],
+ ["co","Kostenstruktur","Personal, Entwicklung, Vertrieb, Infrastruktur, Zinsen"],
+ ["re","Erlösströme","Abonnements und Zusatzpakete"]
+];
+var EMP = [["lage","1 Ausgangslage"],["mass","2 Maßnahme"],["herl","3 Herleitung"],["quelle","4 Wissenschaftliche Quelle"],["wirk","5 Erwartete Wirkung"],["risk","6 Aufwand und Risiken"]];
+var DIMS = [["wer","Wer?","Kunde"],["was","Was?","Nutzenversprechen"],["wie","Wie?","Wertschöpfung"],["wert","Wert?","Ertragsmechanik"]];
+
+function M(){ return state.muster; }
+function normW(w){ var s = w.n + w.m + w.e + w.r; if(!s) return {n:.25,m:.25,e:.25,r:.25}; return {n:w.n/s, m:w.m/s, e:w.e/s, r:w.r/s}; }
+function scoreOf(idea, w){ var nw = normW(w); return idea.sc.n*nw.n + idea.sc.m*nw.m + idea.sc.e*nw.e + idea.sc.r*nw.r; }
+function ranked(w){
+  return M().ideas.slice().sort(function(a,b){ var d = scoreOf(b,w) - scoreOf(a,w); if(Math.abs(d) > 1e-9) return d; return (b.sc.n - a.sc.n) || a.id.localeCompare(b.id); });
+}
+function fmt2(n){ return n.toFixed(2).replace(".",","); }
+
+function renderDreieck(){
+  var d = M().dreieck, h = "";
+  DIMS.forEach(function(x){ h += '<div class="box"><h3>'+x[1]+' <small>'+x[2]+'</small></h3><textarea data-dq="'+x[0]+'" aria-label="'+x[1]+'">'+esc(d[x[0]])+'</textarea></div>'; });
+  var r = document.getElementById("dreieckRoot"); r.innerHTML = h;
+  r.querySelectorAll("textarea").forEach(function(t){ t.addEventListener("input", function(){ d[t.dataset.dq] = t.value; save(); renderTop(); }); });
+  document.getElementById("triSrc").innerHTML = srcChips(M().dreieckQ);
+}
+
+function renderPatterns(){
+  var mk = M().marked, only = M().showOnly, h = "";
+  PATTERNS.forEach(function(p,i){
+    var no = String(i+1), on = !!mk[no];
+    if(only && !on) return;
+    h += '<button type="button" class="pat'+(on?' on':'')+(on && mk[no].s==="Kern"?' kern':'')+'" data-no="'+no+'" aria-pressed="'+on+'"><span class="no">'+no+'</span>'+(i>=54?'<span class="tag">Übung Gruppe 10</span>':'')+'<span class="nm">'+esc(p[0])+'</span><span class="ds">'+esc(p[1])+'</span></button>';
+  });
+  var g = document.getElementById("patGrid"); g.innerHTML = h;
+  g.querySelectorAll(".pat").forEach(function(b){ b.addEventListener("click", function(){
+    var no = b.dataset.no;
+    if(mk[no]){ if(!confirm("Markierung für „"+PATTERNS[+no-1][0]+"“ entfernen? Begründung und Beleg gehen verloren.")) return; delete mk[no]; }
+    else { mk[no] = {s:"Ergänzend", d:"", b:"", q:""}; }
+    save(); renderPatterns();
+  }); });
+  document.getElementById("patFilter").textContent = only ? "Alle 60 Muster zeigen" : "Nur erkannte Muster zeigen";
+  var keys = Object.keys(mk).sort(function(a,b){ var ka = mk[a].s==="Kern"?0:1, kb = mk[b].s==="Kern"?0:1; return ka-kb || a-b; });
+  var kern = keys.filter(function(k){return mk[k].s==="Kern";}).length;
+  document.getElementById("patCount").textContent = keys.length+" erkannt, davon "+kern+" Kernmuster";
+  var c = "";
+  keys.forEach(function(k){
+    var m = mk[k];
+    c += '<article class="pcard" data-no="'+k+'"><h3><span>'+k+' '+esc(PATTERNS[+k-1][0])+'</span>'+srcChips(m.q)+'</h3>';
+    c += '<label>Begründung mit Beleg aus dem Unternehmen<textarea data-k="b">'+esc(m.b)+'</textarea></label>';
+    c += '<div class="row"><label>Bedeutung<select data-k="s"><option'+(m.s==="Kern"?' selected':'')+'>Kern</option><option'+(m.s!=="Kern"?' selected':'')+'>Ergänzend</option></select></label><label>Dimension<input data-k="d" value="'+esc(m.d)+'" placeholder="Wer, Was, Wie, Wert"></label></div>';
+    c += '<label style="margin-top:6px">Quelle (z. B. Q2 oder Annahme)<input data-k="q" value="'+esc(m.q)+'"></label></article>';
+  });
+  var pc = document.getElementById("patCards"); pc.innerHTML = c;
+  pc.querySelectorAll(".pcard").forEach(function(card){
+    var m = mk[card.dataset.no];
+    card.querySelectorAll("[data-k]").forEach(function(inp){
+      inp.addEventListener(inp.tagName==="SELECT"?"change":"input", function(){ m[inp.dataset.k] = inp.value; save(); if(inp.dataset.k==="s") renderPatterns(); });
+      if(inp.dataset.k==="q") inp.addEventListener("change", function(){ renderPatterns(); });
+    });
+  });
+  document.getElementById("patSrc").innerHTML = srcChips("Q15, Q16");
+}
+document.getElementById("patFilter").addEventListener("click", function(){ M().showOnly = !M().showOnly; save(); renderPatterns(); });
+
+function renderUebung(){
+  document.getElementById("uebRoot").innerHTML = M().uebung.map(function(u){
+    return '<div class="box"><h3>'+esc(u.n)+'</h3><dl><dt>Merkmale</dt><dd>'+esc(u.m)+'</dd><dt>Anwendung</dt><dd>'+esc(u.a)+'</dd><dt>Beispiele</dt><dd>'+esc(u.b)+'</dd><dt>Relevanz</dt><dd>'+esc(u.r)+'</dd></dl></div>';
+  }).join("") ;
+}
+
+function renderWeights(){
+  var w = M().weights, h = "";
+  CRIT.forEach(function(c){ h += '<div><label for="w-'+c[0]+'">'+c[1]+' <output id="wo-'+c[0]+'"></output></label><input type="range" id="w-'+c[0]+'" min="0" max="60" step="5" value="'+w[c[0]]+'" data-w="'+c[0]+'"></div>'; });
+  var r = document.getElementById("wtsRoot"); r.innerHTML = h;
+  r.querySelectorAll("input").forEach(function(i){ i.addEventListener("input", function(){ w[i.dataset.w] = +i.value; save(); updateWeightLabels(); renderBoard(); renderAnalysis(); renderTop(); renderMk(); }); });
+  updateWeightLabels();
+}
+function updateWeightLabels(){
+  var w = M().weights, nw = normW(w), sum = w.n+w.m+w.e+w.r;
+  CRIT.forEach(function(c){ document.getElementById("wo-"+c[0]).textContent = Math.round(nw[c[0]]*100)+" %"; });
+  document.getElementById("wtsNote").textContent = "Reglersumme "+sum+"; die Gewichte werden auf 100 % normiert. Ausgangswerte wie im Kursbeispiel: Nutzen 35, Machbarkeit 25, Erlöse 25, Risiko 15.";
+}
+
+var openIdea = null;
+function renderBoard(){
+  var w = M().weights, list = ranked(w), h = "";
+  h += '<thead><tr><th class="num">Rang</th><th>Idee</th><th>Muster und Methode</th>';
+  CRIT.forEach(function(c){ h += '<th class="num">'+c[1]+'</th>'; });
+  h += '<th class="num">Summe</th><th>Ampel</th></tr></thead><tbody>';
+  list.forEach(function(idea, ri){
+    var idx = M().ideas.indexOf(idea);
+    h += '<tr'+(ri<2?' class="top"':'')+'><td class="num rank">'+(ri+1)+'</td>';
+    h += '<td><span class="ttl"><span class="letter">'+esc(idea.id)+'</span>'+esc(idea.t)+'</span><span class="sub">KI-Anwendung: '+esc(idea.ki)+'</span><br><button class="linkbtn" type="button" data-open="'+idx+'">'+(openIdea===idx?'Details schließen':'Details bearbeiten')+'</button></td>';
+    h += '<td><span class="sub" style="color:var(--ink)">'+esc(idea.muster)+'</span><br><span class="sub">'+esc(idea.meth)+'sprinzip</span></td>';
+    CRIT.forEach(function(c){ h += '<td class="num"><select data-i="'+idx+'" data-c="'+c[0]+'" aria-label="'+c[1]+' für Idee '+esc(idea.id)+'">'+[1,2,3,4,5].map(function(v){return '<option'+(v===idea.sc[c[0]]?' selected':'')+'>'+v+'</option>';}).join("")+'</select></td>'; });
+    h += '<td class="num sum">'+fmt2(scoreOf(idea,w))+'</td><td><span class="amp '+idea.amp+'"></span>'+AMP[idea.amp]+'</td></tr>';
+    if(openIdea === idx){
+      h += '<tr><td></td><td colspan="8" class="det"><div class="det-grid">';
+      h += '<label>Titel<input data-f="t" value="'+esc(idea.t)+'"></label><label>KI-Anwendung<input data-f="ki" value="'+esc(idea.ki)+'"></label><label>Muster (Nummer und Name)<input data-f="muster" value="'+esc(idea.muster)+'"></label>';
+      h += '<label style="grid-column:1/3">Idee in zwei Sätzen, mit Vorbild<textarea data-f="ds">'+esc(idea.ds)+'</textarea></label>';
+      h += '<div><label>Methode<select data-f="meth"><option'+(idea.meth==="Ähnlichkeit"?' selected':'')+'>Ähnlichkeit</option><option'+(idea.meth==="Konfrontation"?' selected':'')+'>Konfrontation</option></select></label><label style="margin-top:6px">Ampel Risiko-Check<select data-f="amp"><option value="gruen"'+(idea.amp==="gruen"?' selected':'')+'>grün: unkritisch</option><option value="gelb"'+(idea.amp==="gelb"?' selected':'')+'>gelb: absichern</option><option value="rot"'+(idea.amp==="rot"?' selected':'')+'>rot: Alternative suchen</option></select></label></div>';
+      h += '<label style="grid-column:1/-1">Risiko-Check: AI Act, DSGVO, Data Act, Machbarkeit, Markt und Abhängigkeit<textarea data-f="rk">'+esc(idea.rk)+'</textarea></label>';
+      h += '</div><p style="margin:8px 0 0"><button class="btn" type="button" data-del="'+idx+'">Idee löschen</button></p></td></tr>';
+    } else {
+      h += '<tr><td></td><td colspan="8" class="sub" style="padding-top:0">'+esc(idea.ds)+'</td></tr>';
+    }
+  });
+  h += '</tbody>';
+  var b = document.getElementById("board"); b.innerHTML = h;
+  b.querySelectorAll("select[data-c]").forEach(function(s){ s.addEventListener("change", function(){ M().ideas[+s.dataset.i].sc[s.dataset.c] = +s.value; save(); renderBoard(); renderAnalysis(); renderTop(); renderMk(); }); });
+  b.querySelectorAll("[data-open]").forEach(function(x){ x.addEventListener("click", function(){ var i = +x.dataset.open; openIdea = openIdea===i ? null : i; renderBoard(); }); });
+  b.querySelectorAll("[data-f]").forEach(function(inp){
+    var idea = M().ideas[openIdea];
+    var ev = inp.tagName==="SELECT" ? "change" : "input";
+    inp.addEventListener(ev, function(){ idea[inp.dataset.f] = inp.value; save(); if(ev==="change"){ renderBoard(); renderAnalysis(); renderTop(); renderMk(); } });
+    if(ev==="input") inp.addEventListener("change", function(){ renderBoard(); renderAnalysis(); renderTop(); renderMk(); });
+  });
+  b.querySelectorAll("[data-del]").forEach(function(x){ x.addEventListener("click", function(){
+    var i = +x.dataset.del; if(!confirm("Idee „"+M().ideas[i].t+"“ löschen?")) return;
+    M().ideas.splice(i,1); openIdea = null; save(); renderBoard(); renderAnalysis(); renderTop(); renderMk();
+  }); });
+  var n = M().ideas.length;
+  document.getElementById("ideaCount").textContent = n+" Ideen"+(n<5||n>8?" – Vorgabe sind 5 bis 8 Ideen.":" (Vorgabe: 5 bis 8).");
+}
+document.getElementById("addIdea").addEventListener("click", function(){
+  var used = M().ideas.map(function(i){return i.id;}), id = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(function(l){return used.indexOf(l)<0;})[0] || "X";
+  M().ideas.push({id:id, t:"Neue Idee", ki:"", muster:"", meth:"Ähnlichkeit", ds:"", sc:{n:3,m:3,e:3,r:3}, amp:"gelb", rk:"", nach:{wer:"",was:"",wie:"",wert:""}, bmc:{}, kanni:"", emp:{}});
+  openIdea = M().ideas.length-1; save(); renderBoard(); renderAnalysis(); renderTop(); renderMk();
+});
+
+function renderAnalysis(){
+  var w = M().weights, nw = normW(w), ideas = M().ideas;
+  var W = 420, H = 330, L = 50, R = 16, T = 16, B = 46, pw = W-L-R, ph = H-T-B;
+  function X(v){ return L + (v-1)/4*pw; } function Y(v){ return T + (5-v)/4*ph; }
+  var s = '<svg class="omap" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Opportunity Map der Ideen" style="width:100%;height:auto;display:block">';
+  s += '<rect class="q" x="'+X(3)+'" y="'+Y(5)+'" width="'+(X(5)-X(3))+'" height="'+(Y(3)-Y(5))+'"/>';
+  for(var g=1; g<=5; g++){ s += '<line class="gl" x1="'+X(g)+'" y1="'+T+'" x2="'+X(g)+'" y2="'+(T+ph)+'"/><line class="gl" x1="'+L+'" y1="'+Y(g)+'" x2="'+(L+pw)+'" y2="'+Y(g)+'"/>'; s += '<text x="'+X(g)+'" y="'+(T+ph+16)+'" text-anchor="middle">'+g+'</text><text x="'+(L-8)+'" y="'+(Y(g)+4)+'" text-anchor="end">'+g+'</text>'; }
+  s += '<line class="ax" x1="'+L+'" y1="'+(T+ph)+'" x2="'+(L+pw)+'" y2="'+(T+ph)+'"/><line class="ax" x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(T+ph)+'"/>';
+  s += '<text x="'+(L+pw/2)+'" y="'+(H-6)+'" text-anchor="middle">Machbarkeit</text><text transform="translate(14 '+(T+ph/2)+') rotate(-90)" text-anchor="middle">Attraktivität</text>';
+  s += '<text x="'+(X(5)-6)+'" y="'+(Y(5)+16)+'" text-anchor="end" style="font-weight:600">Zuerst prüfen</text>';
+  var pos = {};
+  ideas.forEach(function(i){
+    var den = nw.n + nw.e, att = den ? (i.sc.n*nw.n + i.sc.e*nw.e)/den : (i.sc.n+i.sc.e)/2;
+    var key = i.sc.m+"|"+att.toFixed(2), k = pos[key] = (pos[key]||0)+1, off = (k-1)*14;
+    var col = i.amp==="rot" ? "var(--g-bad)" : (i.amp==="gelb" ? "var(--g-mid)" : "var(--g-ok)");
+    var cx = X(i.sc.m) + off, cy = Y(att);
+    s += '<circle class="bub" cx="'+cx+'" cy="'+cy+'" r="13" fill="var(--ist)" stroke="'+col+'"><title>'+esc(i.id+": "+i.t)+'</title></circle><text class="lt" x="'+cx+'" y="'+(cy+4.5)+'" text-anchor="middle">'+esc(i.id)+'</text>';
+  });
+  s += '</svg>';
+  document.getElementById("omap").innerHTML = s;
+
+  var sets = [["Eure Gewichte", w],["Gleich gewichtet",{n:25,m:25,e:25,r:25}],["Nutzen im Fokus",{n:50,m:20,e:20,r:10}],["Erlöse im Fokus",{n:25,m:20,e:45,r:10}],["Risiko im Fokus",{n:25,m:25,e:20,r:30}]];
+  var t = '<thead><tr><th>Gewichtung (N/M/E/R in %)</th><th>Platz 1</th><th>Platz 2</th><th>Platz 3</th></tr></thead><tbody>';
+  var tops = [];
+  sets.forEach(function(st){
+    var r = ranked(st[1]), nw2 = normW(st[1]);
+    tops.push(r.slice(0,2).map(function(i){return i.id;}).sort().join(""));
+    t += '<tr><td>'+st[0]+'<br><span class="note">'+[nw2.n,nw2.m,nw2.e,nw2.r].map(function(v){return Math.round(v*100);}).join(" / ")+'</span></td>';
+    for(var p=0;p<3;p++){ t += '<td>'+(r[p]?'<span class="letter">'+esc(r[p].id)+'</span>'+fmt2(scoreOf(r[p],st[1])):'–')+'</td>'; }
+    t += '</tr>';
+  });
+  document.getElementById("sens").innerHTML = t + '</tbody>';
+  var stable = tops.every(function(x){return x===tops[0];});
+  var cnt = {}; tops.forEach(function(x){ x.split("").forEach(function(l){ cnt[l] = (cnt[l]||0)+1; }); });
+  var always = Object.keys(cnt).filter(function(l){return cnt[l]===sets.length;});
+  document.getElementById("verdict").textContent = stable ? "Stabil: Bei allen fünf Gewichtungen bleiben dieselben zwei Ideen vorn." :
+    "Teilweise stabil: "+(always.length ? "Idee "+always.join(" und ")+" ist bei allen Gewichtungen unter den Top 2. " : "Keine Idee ist in allen Gewichtungen unter den Top 2. ")+"Die zweite Top-Idee hängt davon ab, ob Nutzen, Erlöse oder Risiko stärker zählen. Das ist nachvollziehbar und gehört in die Begründung.";
+}
+
+function renderTop(){
+  var w = M().weights, list = ranked(w).slice(0,2), d = M().dreieck, h = "";
+  list.forEach(function(idea, ri){
+    var idx = M().ideas.indexOf(idea);
+    h += '<article class="top-card"><h3><span class="letter">'+esc(idea.id)+'</span>Platz '+(ri+1)+': '+esc(idea.t)+'</h3>';
+    h += '<p class="meta">'+esc(idea.muster)+' · '+esc(idea.meth)+'sprinzip · Summe '+fmt2(scoreOf(idea,w))+' · <span class="amp '+idea.amp+'"></span>Ampel '+AMP[idea.amp]+'</p>';
+    h += '<h4 style="font-size:17px;margin:4px 0 6px">Magisches Dreieck vorher und nachher</h4><div class="table-wrap"><table class="vn"><thead><tr><th></th><th>Vorher (heute)</th><th>Nachher (mit Idee '+esc(idea.id)+')</th></tr></thead><tbody>';
+    DIMS.forEach(function(x){
+      var n = (idea.nach && idea.nach[x[0]]) || "";
+      h += '<tr'+(n?' class="chg"':'')+'><td>'+x[1]+'</td><td>'+esc(d[x[0]])+'</td><td>'+(n?esc(n):'<span class="same">unverändert</span>')+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<h4 style="font-size:17px;margin:14px 0 2px">Veränderung im Business Model Canvas</h4><p class="note" style="margin:0">Markierte Felder ändern sich.</p><div class="table-wrap"><div class="bmc">';
+    BMC.forEach(function(f){ var nv = idea.bmc && idea.bmc[f[0]]; h += '<div style="grid-area:'+f[0]+'"'+(nv?' class="new"':'')+'><b>'+f[1]+'</b>'+esc(f[2])+(nv?'<em>'+esc(nv)+'</em>':'')+'</div>'; });
+    h += '</div></div>';
+    if(idea.kanni) h += '<p class="kanni"><strong>Kannibalisierung:</strong> '+esc(idea.kanni)+'</p>';
+    h += '<h4 style="font-size:17px;margin:14px 0 2px">Empfehlungsentwurf</h4><p class="note" style="margin:0">3 bis 4 Sätze je Feld; Grundlage für die Priorisierung in Termin 8.</p><div class="emp">';
+    EMP.forEach(function(f){ h += '<div class="f"><label for="emp-'+idx+'-'+f[0]+'">'+f[1]+'</label><textarea id="emp-'+idx+'-'+f[0]+'" data-idx="'+idx+'" data-e="'+f[0]+'" placeholder="Noch offen">'+esc((idea.emp||{})[f[0]])+'</textarea></div>'; });
+    h += '</div></article>';
+  });
+  var r = document.getElementById("topRoot"); r.innerHTML = h;
+  r.querySelectorAll("textarea[data-e]").forEach(function(t){ t.addEventListener("input", function(){ var i = M().ideas[+t.dataset.idx]; if(!i.emp) i.emp = {}; i.emp[t.dataset.e] = t.value; save(); }); });
+}
+
+function renderMk(){
+  var list = ranked(M().weights).slice(0,2), h = '<thead><tr><th>Idee</th><th>Wirkung</th><th>Aufwand</th><th>Risiko</th><th>Einordnung</th><th>Nächster Schritt</th></tr></thead><tbody>';
+  list.forEach(function(i){
+    var wi = i.sc.n, au = 6 - i.sc.m, ri = 6 - i.sc.r;
+    var q = wi>=4 ? (au<=2 ? "Quick Win" : "Großes Vorhaben") : (au<=2 ? "Nebenbei" : "Vermeiden");
+    var next = (i.emp && i.emp.mass) ? i.emp.mass.split(". ").slice(-1)[0].replace(/\.$/,"") : "Pilot planen";
+    h += '<tr><td><span class="letter">'+esc(i.id)+'</span>'+esc(i.t)+'</td><td>'+wi+'</td><td>'+au+'</td><td>'+ri+(ri>=4?' (vorher absichern)':'')+'</td><td class="quad">'+q+'</td><td>'+esc(next)+'</td></tr>';
+  });
+  document.getElementById("mkTable").innerHTML = h + '</tbody>';
+}
+
+function renderMuster(){ renderDreieck(); renderPatterns(); renderUebung(); renderWeights(); renderBoard(); renderAnalysis(); renderTop(); renderMk(); }
+
+/* ---------- Routing ---------- */
+function route(){
+  var h = (location.hash || "").replace("#","");
+  if(h.indexOf("src-") === 0) return;
+  var view = (h === "reifegrad" || h === "muster") ? h : "steckbrief";
+  document.getElementById("view-steckbrief").hidden = view !== "steckbrief";
+  document.getElementById("view-reifegrad").hidden = view !== "reifegrad";
+  document.getElementById("view-muster").hidden = view !== "muster";
+  document.querySelectorAll(".steps a").forEach(function(a){ if(a.dataset.view === view) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  document.title = ({reifegrad:"Reifegrad", muster:"Muster und Ideen", steckbrief:"Steckbrief"})[view] + " – Analyse-Tool TeamViewer";
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- Theme ---------- */
+document.getElementById("themeBtn").addEventListener("click", function(){
+  var root = document.documentElement;
+  var cur = root.getAttribute("data-theme");
+  var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+});
+
+document.getElementById("resetBtn").addEventListener("click", function(){
+  if(!confirm("Alle Änderungen verwerfen und den Ausgangsstand laden?")) return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  state = clone(DEFAULT); editMode = false; openIdea = null;
+  document.getElementById("editBtn").textContent = "Steckbrief bearbeiten";
+  renderAll();
+});
+
+function renderAll(){ renderSteckbrief(); renderElements(); renderOverview(); renderTexts(); renderMuster(); renderSources(); }
+renderAll();
+route();
+})();
+</script>
+</body>
+</html>
